@@ -40,7 +40,7 @@ Backend app samples often require credentials and user data. Any future Parse
 integration should keep secrets out of source control and use clearly fake data
 for examples and tests.
 
-## What We Will Not Merge For Now
+## What We Will Not Merge (For Now)
 
 - Checked-in Parse keys or production endpoints
 - Broad UI work before the sample scenario is defined
