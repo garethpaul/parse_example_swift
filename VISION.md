@@ -1,5 +1,8 @@
 ## Parse Example Swift Vision
 
+This document explains the current state and direction of the project.
+Project overview and developer docs: [`README.md`](README.md)
+
 Parse Example Swift is a minimal early Swift iOS project scaffold intended to
 demonstrate where a Parse-backed app integration would start.
 
