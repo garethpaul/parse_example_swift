@@ -40,7 +40,6 @@ Canonical security policy and reporting:
 
 - [`SECURITY.md`](SECURITY.md)
 
-
 Backend app samples often require credentials and user data. Any future Parse
 integration should keep secrets out of source control and use clearly fake data
 for examples and tests.
