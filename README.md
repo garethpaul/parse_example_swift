@@ -7,6 +7,9 @@
 
 `garethpaul/parse_example_swift` is an Apple platform application or Objective-C/Swift sample. Swift Parse Example
 
+This is a legacy Swift/Xcode scaffold. It does not currently include the Parse
+SDK, Parse credentials, or an implemented backend login/data flow.
+
 This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: Swift (3), C/C++ headers (1).
 
 ## Repository Contents
@@ -14,14 +17,18 @@ This README is based on the checked-in source, manifests, scripts, and repositor
 - `parse_example` - source or example code
 - `parse_example.xcodeproj` - Xcode project file
 - `parse_exampleTests` - source or example code
+- `Makefile` - local static verification entry point
+- `CHANGES.md` - baseline change log
+- `docs/plans/2026-06-08-parse-swift-baseline.md` - completed baseline plan
+- `scripts/check-baseline.py` - static baseline checks used by `make check`
 - `SECURITY.md` - security reporting and disclosure guidance
 - `VISION.md` - project direction and maintenance guardrails
 
 Additional scan context:
 
 - Source directories: parse_example, parse_exampleTests
-- Dependency and build manifests: none detected
-- Entry points or build surfaces: parse_example.xcodeproj
+- Dependency and build manifests: Makefile
+- Entry points or build surfaces: parse_example.xcodeproj, Makefile
 - Test-looking files: parse_exampleTests/Info.plist, parse_exampleTests/parse_exampleTests.swift
 
 ## Getting Started
@@ -43,16 +50,22 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 ## Running or Using the Project
 
 - Open `parse_example.xcodeproj` in Xcode, choose the app or sample scheme, and run it on the matching simulator/device.
+- Run `make check` before changing the project scaffold, plist/storyboard
+  files, or Parse integration assumptions.
 
 ## Testing and Verification
 
-- Xcode's test action or `xcodebuild test` with the appropriate scheme and destination
+- `make check`
+- `python3 scripts/check-baseline.py`
+- Xcode's test action or `xcodebuild test` with the appropriate scheme and destination when Xcode is available
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
 ## Configuration and Secrets
 
 - No required secret or credential file was identified in the repository scan. If you add integrations later, keep secrets out of git.
+- Do not commit Parse credentials, application IDs, client keys, production
+  endpoints, or captured user data.
 
 ## Security and Privacy Notes
 
@@ -62,6 +75,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 ## Maintenance Notes
 
 - This looks like an Apple platform project or sample. Xcode, Swift, CocoaPods, and deployment target versions may need to match the original project era.
+- See `CHANGES.md` and `docs/plans/2026-06-08-parse-swift-baseline.md` for
+  the current static baseline.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 

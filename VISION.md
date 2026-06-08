@@ -14,6 +14,11 @@ The goal is to preserve the scaffold while making clear that meaningful Parse
 behavior still needs to be documented and implemented before the project is a
 working integration sample.
 
+Current baseline: `make check` performs static validation of the legacy Swift
+project structure, plist/storyboard XML, and documentation guardrails. The
+repository currently has no Parse SDK, Parse credentials, or implemented
+backend data flow.
+
 The current focus is:
 
 Priority:
@@ -22,6 +27,7 @@ Priority:
 - Keep the empty app behavior easy to inspect
 - Document SDK and Swift version assumptions before adding Parse calls
 - Avoid committing app credentials or service keys
+- Keep static checks green while Xcode is unavailable in automation
 
 Next priorities:
 

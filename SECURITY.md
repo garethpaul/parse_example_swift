@@ -28,10 +28,17 @@ Helpful reports include:
 - Review found network clients, sockets, web APIs, or service endpoints; changes in those areas should receive security-focused review before merge.
 - Review found file, document, data, or media parsing flows; changes in those areas should receive security-focused review before merge.
 - No primary dependency manifest was detected in the repository root. If dependencies are added later, include a manifest and prefer reproducible installation instructions.
+- Current baseline has no Parse SDK integration, Parse credentials, production
+  endpoint, or implemented backend login/data flow. Treat any future Parse
+  integration as security-sensitive and cover it with `make check` plus Xcode
+  tests when Xcode is available.
 
 ## Mobile Privacy Notes
 
 If this project requests device permissions such as location, camera, microphone, contacts, Bluetooth, health data, or local storage access, reports should describe the permission involved and whether sensitive data can be accessed, persisted, or transmitted unexpectedly. Please avoid testing against real third-party user data or accounts you do not control.
+
+Do not commit Parse application IDs, client keys, session tokens, production
+endpoints, local provisioning data, or captured user records.
 
 ## Dependency and Supply Chain Security
 

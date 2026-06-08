@@ -15,6 +15,16 @@ xcuserdata
 profile
 *.moved-aside
 DerivedData
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.ipa
+*.dSYM.zip
+*.dSYM
+.env
+.env.*
+*.log
+tmp/
 .idea/
 # Pods - for those of you who use CocoaPods
 Pods
