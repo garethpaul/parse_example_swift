@@ -46,3 +46,6 @@ for examples and tests.
 - Broad UI work before the sample scenario is defined
 - SDK migrations without setup notes
 - Untested service calls
+
+This list is a roadmap guardrail, not a permanent rule.
+Strong user demand and strong technical rationale can change it.
