@@ -34,7 +34,8 @@ Priority:
   and XCTest target
 - Keep the storyboard initial view controller bound to the checked-in
   `ViewController` class
-- Keep the main storyboard plist entry aligned with the launch storyboard
+- Keep the main storyboard plist entry aligned with the checked-in `Main`
+  storyboard
 - Keep target default configurations explicit in Xcode project metadata
 
 Next priorities:

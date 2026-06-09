@@ -92,7 +92,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
   or test target metadata.
 - Keep the storyboard initial view controller bound to `ViewController` when
   editing Interface Builder files.
-- Keep the main storyboard plist entry aligned with the checked-in launch
+- Keep the main storyboard plist entry aligned with the checked-in `Main`
   storyboard.
 - Keep target default configurations explicit when editing Xcode project
   metadata.
