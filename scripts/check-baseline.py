@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN = "docs/plans/2026-06-08-parse-swift-baseline.md"
+STORYBOARD_PLAN = "docs/plans/2026-06-09-storyboard-initial-view-controller.md"
 REQUIRED = [
     ".gitignore",
     "CHANGES.md",
@@ -22,6 +23,7 @@ REQUIRED = [
     "docs/plans/2026-06-09-non-placeholder-xctest.md",
     "docs/plans/2026-06-09-non-empty-bundle-identifier.md",
     "docs/plans/2026-06-09-plist-package-types.md",
+    STORYBOARD_PLAN,
     "docs/plans/2026-06-09-target-default-configuration.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
@@ -77,11 +79,31 @@ def main():
         if plist.get("CFBundlePackageType") != package_type:
             failures.append(f"{path} must keep CFBundlePackageType={package_type}")
 
+    storyboard_tree = None
     for path in ["parse_example/Base.lproj/Main.storyboard", "docs/readme-overview.svg"]:
         try:
-            ET.parse(ROOT / path)
+            tree = ET.parse(ROOT / path)
+            if path == "parse_example/Base.lproj/Main.storyboard":
+                storyboard_tree = tree
         except ET.ParseError as error:
             failures.append(f"{path} must parse as XML: {error}")
+
+    if storyboard_tree is not None:
+        storyboard_root = storyboard_tree.getroot()
+        initial_view_controller = storyboard_root.get("initialViewController")
+        if not initial_view_controller:
+            failures.append("Main.storyboard must declare an initial view controller")
+        else:
+            initial_controller = storyboard_root.find(
+                f".//viewController[@id='{initial_view_controller}']"
+            )
+            if initial_controller is None:
+                failures.append("Main.storyboard initial view controller must resolve to a scene")
+            else:
+                if initial_controller.get("customClass") != "ViewController":
+                    failures.append("Main.storyboard initial scene must use ViewController")
+                if initial_controller.get("customModuleProvider") != "target":
+                    failures.append("Main.storyboard ViewController must use the target module provider")
 
     pbxproj = read("parse_example.xcodeproj/project.pbxproj")
     for phrase in ["parse_example", "parse_exampleTests", "AppDelegate.swift", "ViewController.swift"]:
@@ -135,6 +157,7 @@ def main():
         "non-empty bundle identifier",
         "plist bundle identifiers",
         "plist package types",
+        "storyboard initial view controller",
         "target default configurations",
     ]:
         if phrase.lower() not in docs.lower():
@@ -152,6 +175,9 @@ def main():
     package_plan = read("docs/plans/2026-06-09-plist-package-types.md")
     if "status: completed" not in package_plan or "CFBundlePackageType" not in package_plan:
         failures.append("plist package type plan must record completed status and verification")
+    storyboard_plan = read(STORYBOARD_PLAN)
+    if "status: completed" not in storyboard_plan or "initial view controller" not in storyboard_plan:
+        failures.append("storyboard plan must record completed status and verification")
     default_config_plan = read("docs/plans/2026-06-09-target-default-configuration.md")
     if "status: completed" not in default_config_plan or "defaultConfigurationName" not in default_config_plan:
         failures.append("target default configuration plan must record completed status and verification")

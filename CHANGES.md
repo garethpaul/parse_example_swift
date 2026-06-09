@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-09
+
+- Added a static storyboard guard that requires the initial scene to resolve to
+  the checked-in `ViewController` class.
+
 ## 2026-06-08
 
 - Added `make check` with static project, plist, storyboard, and documentation

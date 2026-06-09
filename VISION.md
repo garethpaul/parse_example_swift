@@ -32,6 +32,8 @@ Priority:
 - Keep the bundle identifier XCTest checking for non-empty values
 - Keep plist bundle identifiers and plist package types explicit for the app
   and XCTest target
+- Keep the storyboard initial view controller bound to the checked-in
+  `ViewController` class
 - Keep target default configurations explicit in Xcode project metadata
 
 Next priorities:
