@@ -56,6 +56,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   identifier is configured as a non-empty bundle identifier.
 - Static checks preserve plist bundle identifiers and plist package types:
   `APPL` for the app and `BNDL` for the XCTest bundle.
+- Xcode project and native target default configurations stay explicit so the
+  app and XCTest target default configurations remain deterministic.
 
 ## Testing and Verification
 
@@ -84,6 +86,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Keep the non-empty bundle identifier assertion in place for scaffold changes.
 - Keep plist bundle identifiers and plist package types intact when editing app
   or test target metadata.
+- Keep target default configurations explicit when editing Xcode project
+  metadata.
 - See `CHANGES.md` and `docs/plans/2026-06-08-parse-swift-baseline.md` for
   the current static baseline.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.

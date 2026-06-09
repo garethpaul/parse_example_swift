@@ -399,6 +399,7 @@
 				FD977C56193EC16300803F2C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		FD977C57193EC16300803F2C /* Build configuration list for PBXNativeTarget "parse_exampleTests" */ = {
 			isa = XCConfigurationList;
@@ -407,6 +408,7 @@
 				FD977C59193EC16300803F2C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

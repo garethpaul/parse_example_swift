@@ -14,3 +14,5 @@
 - Tightened the scaffold XCTest to reject an empty bundle identifier.
 - Added static plist bundle identifier and package type checks for the app and
   XCTest targets.
+- Added explicit Release default configurations for the app and XCTest target
+  metadata.

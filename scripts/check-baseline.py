@@ -22,6 +22,7 @@ REQUIRED = [
     "docs/plans/2026-06-09-non-placeholder-xctest.md",
     "docs/plans/2026-06-09-non-empty-bundle-identifier.md",
     "docs/plans/2026-06-09-plist-package-types.md",
+    "docs/plans/2026-06-09-target-default-configuration.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -86,6 +87,8 @@ def main():
     for phrase in ["parse_example", "parse_exampleTests", "AppDelegate.swift", "ViewController.swift"]:
         if phrase not in pbxproj:
             failures.append(f"project.pbxproj must reference {phrase}")
+    if pbxproj.count("defaultConfigurationName = Release;") < 3:
+        failures.append("project.pbxproj must keep Release as the default configuration for project and native targets")
 
     app_delegate = read("parse_example/AppDelegate.swift")
     view_controller = read("parse_example/ViewController.swift")
@@ -132,6 +135,7 @@ def main():
         "non-empty bundle identifier",
         "plist bundle identifiers",
         "plist package types",
+        "target default configurations",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
@@ -148,6 +152,9 @@ def main():
     package_plan = read("docs/plans/2026-06-09-plist-package-types.md")
     if "status: completed" not in package_plan or "CFBundlePackageType" not in package_plan:
         failures.append("plist package type plan must record completed status and verification")
+    default_config_plan = read("docs/plans/2026-06-09-target-default-configuration.md")
+    if "status: completed" not in default_config_plan or "defaultConfigurationName" not in default_config_plan:
+        failures.append("target default configuration plan must record completed status and verification")
 
     if failures:
         for failure in failures:

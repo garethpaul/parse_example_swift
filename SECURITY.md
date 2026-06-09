@@ -37,6 +37,8 @@ Helpful reports include:
   backend data flows.
 - Keep plist bundle identifiers and plist package types explicit so app and
   XCTest target metadata changes remain reviewable when Xcode is unavailable.
+- Keep target default configurations explicit so project metadata changes are
+  deterministic during static review.
 
 ## Mobile Privacy Notes
 
