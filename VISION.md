@@ -28,11 +28,13 @@ Priority:
 - Document SDK and Swift version assumptions before adding Parse calls
 - Avoid committing app credentials or service keys
 - Keep static checks green while Xcode is unavailable in automation
+- Keep non-placeholder XCTest coverage for the scaffold
 
 Next priorities:
 
 - Add a README that explains the intended Parse scenario
 - Identify the required Parse SDK version and installation path
+- Add tests around any future Parse-backed behavior before service calls
 - Add a small model or login example only with testable behavior
 - Update the Swift syntax in a dedicated modernization pass
 

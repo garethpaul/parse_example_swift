@@ -9,3 +9,5 @@
 - Added a completed baseline plan under `docs/plans/`.
 - Expanded local ignore rules for Xcode user state, archives, logs, temporary
   files, and environment files.
+- Replaced generated placeholder XCTest methods with a scaffold bundle
+  identifier check.

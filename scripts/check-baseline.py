@@ -19,6 +19,7 @@ REQUIRED = [
     "Swift.h",
     "docs/readme-overview.svg",
     PLAN,
+    "docs/plans/2026-06-09-non-placeholder-xctest.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -76,6 +77,10 @@ def main():
         failures.append("ViewController.swift must define the view controller")
     if "XCTestCase" not in tests:
         failures.append("parse_exampleTests.swift must keep an XCTestCase")
+    if "testExample" in tests or "testPerformanceExample" in tests:
+        failures.append("placeholder XCTest methods must be replaced")
+    if "testAppBundleIdentifierIsConfigured" not in tests or "XCTAssertNotNil" not in tests:
+        failures.append("XCTest target must verify the scaffold bundle identifier")
 
     source_text = "\n".join(read(path) for path in [
         "parse_example/AppDelegate.swift",
@@ -102,6 +107,7 @@ def main():
         "no Parse SDK",
         "Parse credentials",
         "Xcode",
+        "non-placeholder XCTest",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
@@ -109,6 +115,9 @@ def main():
     plan = read(PLAN)
     if "status: completed" not in plan or "make check" not in plan:
         failures.append("plan must record completed status and verification")
+    test_plan = read("docs/plans/2026-06-09-non-placeholder-xctest.md")
+    if "status: completed" not in test_plan or "testAppBundleIdentifierIsConfigured" not in test_plan:
+        failures.append("XCTest plan must record completed status and verification")
 
     if failures:
         for failure in failures:

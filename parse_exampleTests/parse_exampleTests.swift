@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 Gareth Paul Jones. All rights reserved.
 //
 
+import Foundation
 import XCTest
 
 class parse_exampleTests: XCTestCase {
@@ -20,16 +21,9 @@ class parse_exampleTests: XCTestCase {
         super.tearDown()
     }
     
-    func testExample() {
-        // This is an example of a functional test case.
-        XCTAssert(true, "Pass")
-    }
-    
-    func testPerformanceExample() {
-        // This is an example of a performance test case.
-        self.measureBlock() {
-            // Put the code you want to measure the time of here.
-        }
+    func testAppBundleIdentifierIsConfigured() {
+        let identifier = NSBundle.mainBundle().bundleIdentifier
+        XCTAssertNotNil(identifier, "Bundle identifier should be configured.")
     }
     
 }
