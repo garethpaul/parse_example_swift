@@ -21,6 +21,7 @@ REQUIRED = [
     PLAN,
     "docs/plans/2026-06-09-non-placeholder-xctest.md",
     "docs/plans/2026-06-09-non-empty-bundle-identifier.md",
+    "docs/plans/2026-06-09-plist-package-types.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -51,12 +52,18 @@ def main():
         if phrase not in gitignore:
             failures.append(f".gitignore must include {phrase}")
 
+    plists = {}
     for path in ["parse_example/Info.plist", "parse_exampleTests/Info.plist"]:
         try:
             with (ROOT / path).open("rb") as handle:
-                plistlib.load(handle)
+                plists[path] = plistlib.load(handle)
         except Exception as error:
             failures.append(f"{path} must parse as a plist: {error}")
+
+    if plists.get("parse_example/Info.plist", {}).get("CFBundlePackageType") != "APPL":
+        failures.append("app Info.plist must keep CFBundlePackageType as APPL")
+    if plists.get("parse_exampleTests/Info.plist", {}).get("CFBundlePackageType") != "BNDL":
+        failures.append("test Info.plist must keep CFBundlePackageType as BNDL")
 
     for path in ["parse_example/Base.lproj/Main.storyboard", "docs/readme-overview.svg"]:
         try:
@@ -112,6 +119,7 @@ def main():
         "Xcode",
         "non-placeholder XCTest",
         "non-empty bundle identifier",
+        "plist package types",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
@@ -125,6 +133,9 @@ def main():
     bundle_plan = read("docs/plans/2026-06-09-non-empty-bundle-identifier.md")
     if "status: completed" not in bundle_plan or "XCTAssertFalse" not in bundle_plan:
         failures.append("bundle identifier plan must record completed status and verification")
+    package_plan = read("docs/plans/2026-06-09-plist-package-types.md")
+    if "status: completed" not in package_plan or "CFBundlePackageType" not in package_plan:
+        failures.append("plist package type plan must record completed status and verification")
 
     if failures:
         for failure in failures:
