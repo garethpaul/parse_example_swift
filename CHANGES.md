@@ -11,3 +11,4 @@
   files, and environment files.
 - Replaced generated placeholder XCTest methods with a scaffold bundle
   identifier check.
+- Tightened the scaffold XCTest to reject an empty bundle identifier.

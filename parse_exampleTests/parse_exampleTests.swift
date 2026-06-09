@@ -24,6 +24,9 @@ class parse_exampleTests: XCTestCase {
     func testAppBundleIdentifierIsConfigured() {
         let identifier = NSBundle.mainBundle().bundleIdentifier
         XCTAssertNotNil(identifier, "Bundle identifier should be configured.")
+        if let identifier = identifier {
+            XCTAssertFalse(identifier.isEmpty, "Bundle identifier should not be empty.")
+        }
     }
     
 }

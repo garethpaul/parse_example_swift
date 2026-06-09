@@ -20,6 +20,7 @@ REQUIRED = [
     "docs/readme-overview.svg",
     PLAN,
     "docs/plans/2026-06-09-non-placeholder-xctest.md",
+    "docs/plans/2026-06-09-non-empty-bundle-identifier.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -81,6 +82,8 @@ def main():
         failures.append("placeholder XCTest methods must be replaced")
     if "testAppBundleIdentifierIsConfigured" not in tests or "XCTAssertNotNil" not in tests:
         failures.append("XCTest target must verify the scaffold bundle identifier")
+    if "XCTAssertFalse(identifier.isEmpty" not in tests:
+        failures.append("XCTest target must reject an empty bundle identifier")
 
     source_text = "\n".join(read(path) for path in [
         "parse_example/AppDelegate.swift",
@@ -108,6 +111,7 @@ def main():
         "Parse credentials",
         "Xcode",
         "non-placeholder XCTest",
+        "non-empty bundle identifier",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
@@ -118,6 +122,9 @@ def main():
     test_plan = read("docs/plans/2026-06-09-non-placeholder-xctest.md")
     if "status: completed" not in test_plan or "testAppBundleIdentifierIsConfigured" not in test_plan:
         failures.append("XCTest plan must record completed status and verification")
+    bundle_plan = read("docs/plans/2026-06-09-non-empty-bundle-identifier.md")
+    if "status: completed" not in bundle_plan or "XCTAssertFalse" not in bundle_plan:
+        failures.append("bundle identifier plan must record completed status and verification")
 
     if failures:
         for failure in failures:

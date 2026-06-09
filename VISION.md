@@ -29,6 +29,7 @@ Priority:
 - Avoid committing app credentials or service keys
 - Keep static checks green while Xcode is unavailable in automation
 - Keep non-placeholder XCTest coverage for the scaffold
+- Keep the bundle identifier XCTest checking for non-empty values
 
 Next priorities:
 

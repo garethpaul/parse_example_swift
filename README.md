@@ -53,7 +53,7 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 - Run `make check` before changing the project scaffold, plist/storyboard
   files, or Parse integration assumptions.
 - The test target keeps a non-placeholder XCTest that verifies the app bundle
-  identifier is configured.
+  identifier is configured as a non-empty bundle identifier.
 
 ## Testing and Verification
 
@@ -79,6 +79,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - This looks like an Apple platform project or sample. Xcode, Swift, CocoaPods, and deployment target versions may need to match the original project era.
 - Keep non-placeholder XCTest coverage in place before adding Parse SDK calls or
   service-backed flows.
+- Keep the non-empty bundle identifier assertion in place for scaffold changes.
 - See `CHANGES.md` and `docs/plans/2026-06-08-parse-swift-baseline.md` for
   the current static baseline.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.

@@ -32,8 +32,9 @@ Helpful reports include:
   endpoint, or implemented backend login/data flow. Treat any future Parse
   integration as security-sensitive and cover it with `make check` plus Xcode
   tests when Xcode is available.
-- Keep non-placeholder XCTest coverage before adding Parse credentials,
-  production endpoints, or backend data flows.
+- Keep non-placeholder XCTest coverage, including the non-empty bundle
+  identifier check, before adding Parse credentials, production endpoints, or
+  backend data flows.
 
 ## Mobile Privacy Notes
 
