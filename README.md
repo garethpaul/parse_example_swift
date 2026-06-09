@@ -63,6 +63,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   `Main`.
 - Xcode project and native target default configurations stay explicit so the
   app and XCTest target default configurations remain deterministic.
+- Asset catalog metadata for `AppIcon` and `LaunchImage` stays parseable and
+  aligned with the Xcode project compiler settings.
 
 ## Testing and Verification
 
@@ -104,6 +106,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   storyboard.
 - Keep target default configurations explicit when editing Xcode project
   metadata.
+- Keep asset catalog metadata intact when editing app icon or launch image
+  assets.
 - See `CHANGES.md` and `docs/plans/2026-06-08-parse-swift-baseline.md` for
   the current static baseline.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.

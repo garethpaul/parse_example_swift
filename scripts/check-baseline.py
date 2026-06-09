@@ -2,6 +2,7 @@
 """Static baseline checks for the Parse Swift example scaffold."""
 
 from pathlib import Path
+import json
 import plistlib
 import sys
 import xml.etree.ElementTree as ET
@@ -27,10 +28,13 @@ REQUIRED = [
     "docs/plans/2026-06-09-target-default-configuration.md",
     "docs/plans/2026-06-09-main-storyboard-plist.md",
     "docs/plans/2026-06-09-make-gate-aliases.md",
+    "docs/plans/2026-06-09-asset-catalog-metadata.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
     "parse_example/Base.lproj/Main.storyboard",
+    "parse_example/Images.xcassets/AppIcon.appiconset/Contents.json",
+    "parse_example/Images.xcassets/LaunchImage.launchimage/Contents.json",
     "parse_example/Info.plist",
     "parse_exampleTests/Info.plist",
     "parse_exampleTests/parse_exampleTests.swift",
@@ -40,6 +44,13 @@ REQUIRED = [
 
 def read(path):
     return (ROOT / path).read_text(encoding="utf-8", errors="replace")
+
+
+def has_image(images, **expected):
+    return any(
+        all(image.get(key) == value for key, value in expected.items())
+        for image in images
+    )
 
 
 def main():
@@ -91,6 +102,34 @@ def main():
     if app_plist and app_plist.get("UIMainStoryboardFile") != "Main":
         failures.append("parse_example/Info.plist must launch the Main storyboard")
 
+    asset_catalogs = {}
+    for path in [
+        "parse_example/Images.xcassets/AppIcon.appiconset/Contents.json",
+        "parse_example/Images.xcassets/LaunchImage.launchimage/Contents.json",
+    ]:
+        try:
+            asset_catalogs[path] = json.loads(read(path))
+        except json.JSONDecodeError as error:
+            failures.append(f"{path} must parse as JSON: {error}")
+    for path, catalog in asset_catalogs.items():
+        info = catalog.get("info", {})
+        if info.get("version") != 1 or info.get("author") != "xcode":
+            failures.append(f"{path} must keep Xcode asset catalog info metadata")
+    app_icon_images = asset_catalogs.get(
+        "parse_example/Images.xcassets/AppIcon.appiconset/Contents.json", {}
+    ).get("images", [])
+    if not has_image(app_icon_images, idiom="iphone", size="60x60", scale="2x"):
+        failures.append("AppIcon asset catalog must keep the iPhone 60x60@2x icon slot")
+    if not has_image(app_icon_images, idiom="ipad", size="76x76", scale="2x"):
+        failures.append("AppIcon asset catalog must keep the iPad 76x76@2x icon slot")
+    launch_images = asset_catalogs.get(
+        "parse_example/Images.xcassets/LaunchImage.launchimage/Contents.json", {}
+    ).get("images", [])
+    if not has_image(launch_images, idiom="iphone", subtype="retina4", scale="2x"):
+        failures.append("LaunchImage asset catalog must keep the iPhone retina4 launch slot")
+    if not has_image(launch_images, idiom="ipad", orientation="landscape", scale="2x"):
+        failures.append("LaunchImage asset catalog must keep the iPad landscape@2x launch slot")
+
     storyboard_tree = None
     for path in ["parse_example/Base.lproj/Main.storyboard", "docs/readme-overview.svg"]:
         try:
@@ -118,7 +157,14 @@ def main():
                     failures.append("Main.storyboard ViewController must use the target module provider")
 
     pbxproj = read("parse_example.xcodeproj/project.pbxproj")
-    for phrase in ["parse_example", "parse_exampleTests", "AppDelegate.swift", "ViewController.swift"]:
+    for phrase in [
+        "parse_example",
+        "parse_exampleTests",
+        "AppDelegate.swift",
+        "ViewController.swift",
+        "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;",
+        "ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;",
+    ]:
         if phrase not in pbxproj:
             failures.append(f"project.pbxproj must reference {phrase}")
     if pbxproj.count("defaultConfigurationName = Release;") < 3:
@@ -176,6 +222,7 @@ def main():
         "storyboard initial view controller",
         "main storyboard plist entry",
         "target default configurations",
+        "asset catalog metadata",
         "make lint",
         "make test",
         "make build",
@@ -209,6 +256,9 @@ def main():
     for phrase in ["status: completed", "make lint", "make test", "make build", "make verify"]:
         if phrase not in aliases_plan:
             failures.append(f"make gate alias plan must record {phrase}")
+    asset_catalog_plan = read("docs/plans/2026-06-09-asset-catalog-metadata.md")
+    if "status: completed" not in asset_catalog_plan or "asset catalog metadata" not in asset_catalog_plan:
+        failures.append("asset catalog metadata plan must record completed status and verification")
 
     if failures:
         for failure in failures:

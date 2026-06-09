@@ -41,6 +41,8 @@ Helpful reports include:
   storyboard so startup metadata remains reviewable.
 - Keep target default configurations explicit so project metadata changes are
   deterministic during static review.
+- Keep asset catalog metadata reviewable so app icon and launch image settings
+  stay aligned with the Xcode project.
 - Run `make lint`, `make test`, `make build`, `make verify`, and `make check`
   before changing project metadata, storyboard wiring, or Parse integration
   assumptions.

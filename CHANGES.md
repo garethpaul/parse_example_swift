@@ -8,6 +8,8 @@
   at the checked-in `Main` storyboard.
 - Added a static storyboard guard that requires the initial scene to resolve to
   the checked-in `ViewController` class.
+- Added static asset catalog metadata checks for the app icon and launch image
+  slots referenced by the Xcode project.
 
 ## 2026-06-08
 
