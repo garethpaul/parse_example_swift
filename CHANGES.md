@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Added a static app plist guard that requires `UIMainStoryboardFile` to point
+  at the checked-in `Main` storyboard.
 - Added a static storyboard guard that requires the initial scene to resolve to
   the checked-in `ViewController` class.
 

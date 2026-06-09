@@ -58,6 +58,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   `APPL` for the app and `BNDL` for the XCTest bundle.
 - The storyboard initial view controller must stay connected to the checked-in
   `ViewController` Swift class.
+- The main storyboard plist entry must keep `UIMainStoryboardFile` pointed at
+  `Main`.
 - Xcode project and native target default configurations stay explicit so the
   app and XCTest target default configurations remain deterministic.
 
@@ -90,6 +92,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   or test target metadata.
 - Keep the storyboard initial view controller bound to `ViewController` when
   editing Interface Builder files.
+- Keep the main storyboard plist entry aligned with the checked-in launch
+  storyboard.
 - Keep target default configurations explicit when editing Xcode project
   metadata.
 - See `CHANGES.md` and `docs/plans/2026-06-08-parse-swift-baseline.md` for

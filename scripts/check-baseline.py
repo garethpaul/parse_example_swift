@@ -25,6 +25,7 @@ REQUIRED = [
     "docs/plans/2026-06-09-plist-package-types.md",
     STORYBOARD_PLAN,
     "docs/plans/2026-06-09-target-default-configuration.md",
+    "docs/plans/2026-06-09-main-storyboard-plist.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -78,6 +79,9 @@ def main():
             failures.append(f"{path} must keep the product-name bundle identifier token")
         if plist.get("CFBundlePackageType") != package_type:
             failures.append(f"{path} must keep CFBundlePackageType={package_type}")
+    app_plist = plists.get("parse_example/Info.plist")
+    if app_plist and app_plist.get("UIMainStoryboardFile") != "Main":
+        failures.append("parse_example/Info.plist must launch the Main storyboard")
 
     storyboard_tree = None
     for path in ["parse_example/Base.lproj/Main.storyboard", "docs/readme-overview.svg"]:
@@ -127,6 +131,10 @@ def main():
         failures.append("XCTest target must verify the scaffold bundle identifier")
     if "XCTAssertFalse(identifier.isEmpty" not in tests:
         failures.append("XCTest target must reject an empty bundle identifier")
+    if "testAppUsesMainStoryboard" not in tests or "UIMainStoryboardFile" not in tests:
+        failures.append("XCTest target must verify the main storyboard plist entry")
+    if 'XCTAssertEqual(storyboardName, "Main"' not in tests:
+        failures.append("XCTest target must require the Main storyboard")
 
     source_text = "\n".join(read(path) for path in [
         "parse_example/AppDelegate.swift",
@@ -158,6 +166,7 @@ def main():
         "plist bundle identifiers",
         "plist package types",
         "storyboard initial view controller",
+        "main storyboard plist entry",
         "target default configurations",
     ]:
         if phrase.lower() not in docs.lower():
@@ -181,6 +190,9 @@ def main():
     default_config_plan = read("docs/plans/2026-06-09-target-default-configuration.md")
     if "status: completed" not in default_config_plan or "defaultConfigurationName" not in default_config_plan:
         failures.append("target default configuration plan must record completed status and verification")
+    main_storyboard_plan = read("docs/plans/2026-06-09-main-storyboard-plist.md")
+    if "status: completed" not in main_storyboard_plan or "UIMainStoryboardFile" not in main_storyboard_plan:
+        failures.append("main storyboard plist plan must record completed status and verification")
 
     if failures:
         for failure in failures:

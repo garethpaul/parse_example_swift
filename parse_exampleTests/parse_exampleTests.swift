@@ -28,5 +28,10 @@ class parse_exampleTests: XCTestCase {
             XCTAssertFalse(identifier.isEmpty, "Bundle identifier should not be empty.")
         }
     }
+
+    func testAppUsesMainStoryboard() {
+        let storyboardName = NSBundle.mainBundle().objectForInfoDictionaryKey("UIMainStoryboardFile") as? String
+        XCTAssertEqual(storyboardName, "Main", "App should launch the checked-in Main storyboard.")
+    }
     
 }
