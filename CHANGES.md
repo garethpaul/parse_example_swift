@@ -12,4 +12,5 @@
 - Replaced generated placeholder XCTest methods with a scaffold bundle
   identifier check.
 - Tightened the scaffold XCTest to reject an empty bundle identifier.
-- Added static plist package type checks for the app and XCTest targets.
+- Added static plist bundle identifier and package type checks for the app and
+  XCTest targets.

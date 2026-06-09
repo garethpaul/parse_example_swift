@@ -60,10 +60,21 @@ def main():
         except Exception as error:
             failures.append(f"{path} must parse as a plist: {error}")
 
-    if plists.get("parse_example/Info.plist", {}).get("CFBundlePackageType") != "APPL":
-        failures.append("app Info.plist must keep CFBundlePackageType as APPL")
-    if plists.get("parse_exampleTests/Info.plist", {}).get("CFBundlePackageType") != "BNDL":
-        failures.append("test Info.plist must keep CFBundlePackageType as BNDL")
+    expected_package_types = {
+        "parse_example/Info.plist": "APPL",
+        "parse_exampleTests/Info.plist": "BNDL",
+    }
+    for path, package_type in expected_package_types.items():
+        plist = plists.get(path)
+        if not plist:
+            continue
+        bundle_identifier = str(plist.get("CFBundleIdentifier", "")).strip()
+        if not bundle_identifier:
+            failures.append(f"{path} must define a non-empty CFBundleIdentifier")
+        if "${PRODUCT_NAME:rfc1034identifier}" not in bundle_identifier:
+            failures.append(f"{path} must keep the product-name bundle identifier token")
+        if plist.get("CFBundlePackageType") != package_type:
+            failures.append(f"{path} must keep CFBundlePackageType={package_type}")
 
     for path in ["parse_example/Base.lproj/Main.storyboard", "docs/readme-overview.svg"]:
         try:
@@ -119,6 +130,7 @@ def main():
         "Xcode",
         "non-placeholder XCTest",
         "non-empty bundle identifier",
+        "plist bundle identifiers",
         "plist package types",
     ]:
         if phrase.lower() not in docs.lower():
