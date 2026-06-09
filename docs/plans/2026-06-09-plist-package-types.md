@@ -13,8 +13,8 @@ bundle.
 - Preserve `CFBundlePackageType` as `APPL` for the app target.
 - Preserve `CFBundlePackageType` as `BNDL` for the XCTest target.
 - Require non-empty plist bundle identifiers that keep the product-name token.
-- Extend `make check` and docs so plist bundle identifiers and package types
-  stay visible during scaffold maintenance.
+- Extend `make check` and docs so plist bundle identifiers and plist package
+  types stay visible during scaffold maintenance.
 
 ## Verification
 

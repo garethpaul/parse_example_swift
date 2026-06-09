@@ -35,8 +35,8 @@ Helpful reports include:
 - Keep non-placeholder XCTest coverage, including the non-empty bundle
   identifier check, before adding Parse credentials, production endpoints, or
   backend data flows.
-- Keep plist bundle identifiers and package types explicit so app and XCTest
-  target metadata changes remain reviewable when Xcode is unavailable.
+- Keep plist bundle identifiers and plist package types explicit so app and
+  XCTest target metadata changes remain reviewable when Xcode is unavailable.
 
 ## Mobile Privacy Notes
 
