@@ -50,8 +50,9 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 ## Running or Using the Project
 
 - Open `parse_example.xcodeproj` in Xcode, choose the app or sample scheme, and run it on the matching simulator/device.
-- Run `make check` before changing the project scaffold, plist/storyboard
-  files, or Parse integration assumptions.
+- Run `make check`, `make lint`, `make test`, `make build`, or `make verify`
+  before changing the project scaffold, plist/storyboard files, or Parse
+  integration assumptions.
 - The test target keeps a non-placeholder XCTest that verifies the app bundle
   identifier is configured as a non-empty bundle identifier.
 - Static checks preserve plist bundle identifiers and plist package types:
@@ -66,8 +67,15 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 ## Testing and Verification
 
 - `make check`
+- `make lint`
+- `make test`
+- `make build`
+- `make verify`
 - `python3 scripts/check-baseline.py`
 - Xcode's test action or `xcodebuild test` with the appropriate scheme and destination when Xcode is available
+
+The Make aliases use the checked-in static baseline so local verification still
+works on machines without Xcode.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 

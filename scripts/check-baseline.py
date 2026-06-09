@@ -26,6 +26,7 @@ REQUIRED = [
     STORYBOARD_PLAN,
     "docs/plans/2026-06-09-target-default-configuration.md",
     "docs/plans/2026-06-09-main-storyboard-plist.md",
+    "docs/plans/2026-06-09-make-gate-aliases.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -48,8 +49,15 @@ def main():
             failures.append(f"required file missing: {path}")
 
     makefile = read("Makefile")
-    if "python3 scripts/check-baseline.py" not in makefile:
-        failures.append("Makefile must expose the static checker")
+    for phrase in [
+        "python3 scripts/check-baseline.py",
+        "lint: static-check",
+        "test: static-check",
+        "build: static-check",
+        "verify: check",
+    ]:
+        if phrase not in makefile:
+            failures.append(f"Makefile must include {phrase}")
 
     gitignore = read(".gitignore")
     for phrase in ["DerivedData", "*.xcuserstate", ".env", "*.log", "tmp/"]:
@@ -168,6 +176,10 @@ def main():
         "storyboard initial view controller",
         "main storyboard plist entry",
         "target default configurations",
+        "make lint",
+        "make test",
+        "make build",
+        "make verify",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
@@ -193,6 +205,10 @@ def main():
     main_storyboard_plan = read("docs/plans/2026-06-09-main-storyboard-plist.md")
     if "status: completed" not in main_storyboard_plan or "UIMainStoryboardFile" not in main_storyboard_plan:
         failures.append("main storyboard plist plan must record completed status and verification")
+    aliases_plan = read("docs/plans/2026-06-09-make-gate-aliases.md")
+    for phrase in ["status: completed", "make lint", "make test", "make build", "make verify"]:
+        if phrase not in aliases_plan:
+            failures.append(f"make gate alias plan must record {phrase}")
 
     if failures:
         for failure in failures:

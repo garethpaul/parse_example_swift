@@ -41,6 +41,9 @@ Helpful reports include:
   storyboard so startup metadata remains reviewable.
 - Keep target default configurations explicit so project metadata changes are
   deterministic during static review.
+- Run `make lint`, `make test`, `make build`, `make verify`, and `make check`
+  before changing project metadata, storyboard wiring, or Parse integration
+  assumptions.
 
 ## Mobile Privacy Notes
 

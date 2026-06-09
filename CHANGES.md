@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Added stable `make lint`, `make test`, `make build`, and `make verify`
+  aliases for the no-Xcode static baseline.
 - Added a static app plist guard that requires `UIMainStoryboardFile` to point
   at the checked-in `Main` storyboard.
 - Added a static storyboard guard that requires the initial scene to resolve to
