@@ -11,7 +11,9 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 PLAN = "docs/plans/2026-06-08-parse-swift-baseline.md"
 STORYBOARD_PLAN = "docs/plans/2026-06-09-storyboard-initial-view-controller.md"
+HOSTED_VALIDATION_PLAN = "docs/plans/2026-06-10-hosted-structural-validation.md"
 REQUIRED = [
+    ".github/workflows/check.yml",
     ".gitignore",
     "CHANGES.md",
     "Makefile",
@@ -30,6 +32,7 @@ REQUIRED = [
     "docs/plans/2026-06-09-make-gate-aliases.md",
     "docs/plans/2026-06-09-asset-catalog-metadata.md",
     "docs/plans/2026-06-10-plist-executable-name-tokens.md",
+    HOSTED_VALIDATION_PLAN,
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -70,6 +73,20 @@ def main():
     ]:
         if phrase not in makefile:
             failures.append(f"Makefile must include {phrase}")
+
+    workflow = read(".github/workflows/check.yml")
+    for expected in [
+        "permissions:\n  contents: read",
+        "cancel-in-progress: true",
+        "runs-on: macos-15",
+        "timeout-minutes: 10",
+        "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10",
+        "actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405",
+        'python-version: "3.12"',
+        "run: make check",
+    ]:
+        if expected not in workflow:
+            failures.append(f"Check workflow must keep {expected}")
 
     gitignore = read(".gitignore")
     for phrase in ["DerivedData", "*.xcuserstate", ".env", "*.log", "tmp/"]:
@@ -233,6 +250,8 @@ def main():
         "make test",
         "make build",
         "make verify",
+        "hosted macOS",
+        "structural validation",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
@@ -272,6 +291,9 @@ def main():
         or "CFBundleName" not in plist_token_plan
     ):
         failures.append("plist executable/name token plan must record completed status and verification")
+    hosted_validation_plan = read(HOSTED_VALIDATION_PLAN)
+    if "status: completed" not in hosted_validation_plan or "make check" not in hosted_validation_plan:
+        failures.append("hosted structural validation plan must record completed status and verification")
 
     if failures:
         for failure in failures:

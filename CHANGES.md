@@ -13,6 +13,8 @@
 
 ## 2026-06-10
 
+- Added pinned, read-only hosted macOS structural validation for the legacy
+  Swift/Xcode scaffold.
 - Added static plist checks for the executable and product-name substitution
   tokens used by the app and XCTest targets.
 

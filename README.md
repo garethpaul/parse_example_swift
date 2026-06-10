@@ -81,6 +81,9 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 
 The Make aliases use the checked-in static baseline so local verification still
 works on machines without Xcode.
+Pinned hosted macOS structural validation runs the same `make check` contract
+on Python 3.12. It does not claim that this Swift 1-era iOS 8 project builds or
+that XCTest runs on current Xcode.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
