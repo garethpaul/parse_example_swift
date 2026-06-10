@@ -33,6 +33,8 @@ Priority:
 - Keep the bundle identifier XCTest checking for non-empty values
 - Keep plist bundle identifiers and plist package types explicit for the app
   and XCTest target
+- Keep plist executable and product-name tokens explicit for the app and XCTest
+  target
 - Keep the storyboard initial view controller bound to the checked-in
   `ViewController` class
 - Keep the main storyboard plist entry aligned with the checked-in `Main`

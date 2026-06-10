@@ -29,6 +29,7 @@ REQUIRED = [
     "docs/plans/2026-06-09-main-storyboard-plist.md",
     "docs/plans/2026-06-09-make-gate-aliases.md",
     "docs/plans/2026-06-09-asset-catalog-metadata.md",
+    "docs/plans/2026-06-10-plist-executable-name-tokens.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -98,6 +99,10 @@ def main():
             failures.append(f"{path} must keep the product-name bundle identifier token")
         if plist.get("CFBundlePackageType") != package_type:
             failures.append(f"{path} must keep CFBundlePackageType={package_type}")
+        if plist.get("CFBundleExecutable") != "${EXECUTABLE_NAME}":
+            failures.append(f"{path} must keep CFBundleExecutable=${{EXECUTABLE_NAME}}")
+        if plist.get("CFBundleName") != "${PRODUCT_NAME}":
+            failures.append(f"{path} must keep CFBundleName=${{PRODUCT_NAME}}")
     app_plist = plists.get("parse_example/Info.plist")
     if app_plist and app_plist.get("UIMainStoryboardFile") != "Main":
         failures.append("parse_example/Info.plist must launch the Main storyboard")
@@ -219,6 +224,7 @@ def main():
         "non-empty bundle identifier",
         "plist bundle identifiers",
         "plist package types",
+        "plist executable and product-name tokens",
         "storyboard initial view controller",
         "main storyboard plist entry",
         "target default configurations",
@@ -259,6 +265,13 @@ def main():
     asset_catalog_plan = read("docs/plans/2026-06-09-asset-catalog-metadata.md")
     if "status: completed" not in asset_catalog_plan or "asset catalog metadata" not in asset_catalog_plan:
         failures.append("asset catalog metadata plan must record completed status and verification")
+    plist_token_plan = read("docs/plans/2026-06-10-plist-executable-name-tokens.md")
+    if (
+        "status: completed" not in plist_token_plan
+        or "CFBundleExecutable" not in plist_token_plan
+        or "CFBundleName" not in plist_token_plan
+    ):
+        failures.append("plist executable/name token plan must record completed status and verification")
 
     if failures:
         for failure in failures:

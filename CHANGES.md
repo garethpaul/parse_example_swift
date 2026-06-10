@@ -11,6 +11,11 @@
 - Added static asset catalog metadata checks for the app icon and launch image
   slots referenced by the Xcode project.
 
+## 2026-06-10
+
+- Added static plist checks for the executable and product-name substitution
+  tokens used by the app and XCTest targets.
+
 ## 2026-06-08
 
 - Added `make check` with static project, plist, storyboard, and documentation

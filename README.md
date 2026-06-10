@@ -57,6 +57,9 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   identifier is configured as a non-empty bundle identifier.
 - Static checks preserve plist bundle identifiers and plist package types:
   `APPL` for the app and `BNDL` for the XCTest bundle.
+- Static checks preserve plist executable and product-name tokens:
+  `CFBundleExecutable` stays `${EXECUTABLE_NAME}` and `CFBundleName` stays
+  `${PRODUCT_NAME}` for the app and XCTest targets.
 - The storyboard initial view controller must stay connected to the checked-in
   `ViewController` Swift class.
 - The main storyboard plist entry must keep `UIMainStoryboardFile` pointed at
@@ -100,6 +103,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Keep the non-empty bundle identifier assertion in place for scaffold changes.
 - Keep plist bundle identifiers and plist package types intact when editing app
   or test target metadata.
+- Keep plist executable and product-name tokens intact when editing app or test
+  target metadata.
 - Keep the storyboard initial view controller bound to `ViewController` when
   editing Interface Builder files.
 - Keep the main storyboard plist entry aligned with the checked-in `Main`
