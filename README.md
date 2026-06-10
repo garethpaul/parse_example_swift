@@ -66,6 +66,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   `Main`.
 - Xcode project and native target default configurations stay explicit so the
   app and XCTest target default configurations remain deterministic.
+- Static checks resolve source target membership through Xcode build phases so
+  app and XCTest Swift files cannot silently move between targets.
 - Asset catalog metadata for `AppIcon` and `LaunchImage` stays parseable and
   aligned with the Xcode project compiler settings.
 

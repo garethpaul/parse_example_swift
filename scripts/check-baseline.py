@@ -4,6 +4,7 @@
 from pathlib import Path
 import json
 import plistlib
+import re
 import sys
 import xml.etree.ElementTree as ET
 
@@ -12,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLAN = "docs/plans/2026-06-08-parse-swift-baseline.md"
 STORYBOARD_PLAN = "docs/plans/2026-06-09-storyboard-initial-view-controller.md"
 HOSTED_VALIDATION_PLAN = "docs/plans/2026-06-10-hosted-structural-validation.md"
+SOURCE_MEMBERSHIP_PLAN = "docs/plans/2026-06-10-source-target-membership.md"
 REQUIRED = [
     ".github/workflows/check.yml",
     ".gitignore",
@@ -33,6 +35,7 @@ REQUIRED = [
     "docs/plans/2026-06-09-asset-catalog-metadata.md",
     "docs/plans/2026-06-10-plist-executable-name-tokens.md",
     HOSTED_VALIDATION_PLAN,
+    SOURCE_MEMBERSHIP_PLAN,
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -55,6 +58,79 @@ def has_image(images, **expected):
         all(image.get(key) == value for key, value in expected.items())
         for image in images
     )
+
+
+def pbx_section(project, name):
+    match = re.search(
+        rf"/\* Begin {re.escape(name)} section \*/(.*?)/\* End {re.escape(name)} section \*/",
+        project,
+        re.DOTALL,
+    )
+    return match.group(1) if match else ""
+
+
+def pbx_objects(project, section_name):
+    section = pbx_section(project, section_name)
+    return {
+        object_id: body
+        for object_id, body in re.findall(
+            r"^\t\t([A-F0-9]{24})(?: /\*.*?\*/)? = \{(.*?)\};\s*$",
+            section,
+            re.DOTALL | re.MULTILINE,
+        )
+    }
+
+
+def pbx_list_ids(body, field):
+    match = re.search(rf"\b{re.escape(field)} = \((.*?)\);", body, re.DOTALL)
+    return re.findall(r"\b[A-F0-9]{24}\b", match.group(1)) if match else []
+
+
+def pbx_field(body, field):
+    match = re.search(rf"\b{re.escape(field)} = (?:\"([^\"]+)\"|([^;]+));", body)
+    return (match.group(1) or match.group(2)).strip() if match else None
+
+
+def pbx_id_field(body, field):
+    match = re.search(rf"\b{re.escape(field)} = ([A-F0-9]{{24}})\b", body)
+    return match.group(1) if match else None
+
+
+def target_source_paths(project):
+    build_files = pbx_objects(project, "PBXBuildFile")
+    file_references = pbx_objects(project, "PBXFileReference")
+    source_phases = pbx_objects(project, "PBXSourcesBuildPhase")
+    native_targets = pbx_objects(project, "PBXNativeTarget")
+
+    file_paths = {
+        object_id: pbx_field(body, "path")
+        for object_id, body in file_references.items()
+    }
+    build_file_paths = {
+        object_id: file_paths.get(pbx_id_field(body, "fileRef"))
+        for object_id, body in build_files.items()
+    }
+    phase_paths = {
+        object_id: {
+            build_file_paths.get(build_file_id) or f"<unresolved:{build_file_id}>"
+            for build_file_id in pbx_list_ids(body, "files")
+        }
+        for object_id, body in source_phases.items()
+    }
+
+    targets = {}
+    for body in native_targets.values():
+        target_name = pbx_field(body, "name")
+        source_phase_ids = [
+            phase_id
+            for phase_id in pbx_list_ids(body, "buildPhases")
+            if phase_id in source_phases
+        ]
+        target_paths = set()
+        for phase_id in source_phase_ids:
+            target_paths.update(phase_paths[phase_id])
+        targets[target_name] = target_paths
+    return targets
 
 
 def main():
@@ -191,6 +267,18 @@ def main():
             failures.append(f"project.pbxproj must reference {phrase}")
     if pbxproj.count("defaultConfigurationName = Release;") < 3:
         failures.append("project.pbxproj must keep Release as the default configuration for project and native targets")
+    expected_target_sources = {
+        "parse_example": {"AppDelegate.swift", "ViewController.swift"},
+        "parse_exampleTests": {"parse_exampleTests.swift"},
+    }
+    actual_target_sources = target_source_paths(pbxproj)
+    for target_name, expected_sources in expected_target_sources.items():
+        actual_sources = actual_target_sources.get(target_name)
+        if actual_sources != expected_sources:
+            failures.append(
+                f"{target_name} Sources phase must contain exactly "
+                f"{sorted(expected_sources)}; found {sorted(actual_sources or set())}"
+            )
 
     app_delegate = read("parse_example/AppDelegate.swift")
     view_controller = read("parse_example/ViewController.swift")
@@ -252,6 +340,7 @@ def main():
         "make verify",
         "hosted macOS",
         "structural validation",
+        "source target membership",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
@@ -294,6 +383,9 @@ def main():
     hosted_validation_plan = read(HOSTED_VALIDATION_PLAN)
     if "status: completed" not in hosted_validation_plan or "make check" not in hosted_validation_plan:
         failures.append("hosted structural validation plan must record completed status and verification")
+    source_membership_plan = read(SOURCE_MEMBERSHIP_PLAN)
+    if "status: completed" not in source_membership_plan or "PBXSourcesBuildPhase" not in source_membership_plan:
+        failures.append("source target membership plan must record completed status and verification")
 
     if failures:
         for failure in failures:

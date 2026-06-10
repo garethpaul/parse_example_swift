@@ -17,6 +17,8 @@
   Swift/Xcode scaffold.
 - Added static plist checks for the executable and product-name substitution
   tokens used by the app and XCTest targets.
+- Added structured source target membership checks for app and XCTest build
+  phases in the Xcode project.
 
 ## 2026-06-08
 

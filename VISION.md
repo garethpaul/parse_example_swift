@@ -41,6 +41,7 @@ Priority:
 - Keep the main storyboard plist entry aligned with the checked-in `Main`
   storyboard
 - Keep target default configurations explicit in Xcode project metadata
+- Keep source target membership aligned with app and XCTest build phases
 - Keep asset catalog metadata aligned with app icon and launch image settings
 - Keep `make lint`, `make test`, `make build`, `make verify`, and `make check`
   available as no-Xcode local verification gates
