@@ -35,11 +35,14 @@ Priority:
   and XCTest target
 - Keep plist executable and product-name tokens explicit for the app and XCTest
   target
+- Keep the no-Xcode structural validation gate running on pinned hosted macOS
+- Keep hosted checkout credential-free and reject workflow drift structurally
 - Keep the storyboard initial view controller bound to the checked-in
   `ViewController` class
 - Keep the main storyboard plist entry aligned with the checked-in `Main`
   storyboard
 - Keep target default configurations explicit in Xcode project metadata
+- Keep source target membership aligned with app and XCTest build phases
 - Keep asset catalog metadata aligned with app icon and launch image settings
 - Keep `make lint`, `make test`, `make build`, `make verify`, and `make check`
   available as no-Xcode local verification gates

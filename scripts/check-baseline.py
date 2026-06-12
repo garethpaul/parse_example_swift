@@ -4,6 +4,7 @@
 from pathlib import Path
 import json
 import plistlib
+import re
 import sys
 import xml.etree.ElementTree as ET
 
@@ -11,7 +12,12 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 PLAN = "docs/plans/2026-06-08-parse-swift-baseline.md"
 STORYBOARD_PLAN = "docs/plans/2026-06-09-storyboard-initial-view-controller.md"
+HOSTED_VALIDATION_PLAN = "docs/plans/2026-06-10-hosted-structural-validation.md"
+SOURCE_MEMBERSHIP_PLAN = "docs/plans/2026-06-10-source-target-membership.md"
+CREDENTIAL_FREE_PLAN = "docs/plans/2026-06-12-credential-free-hosted-validation.md"
 REQUIRED = [
+    ".github/workflows/check.yml",
+    "AGENTS.md",
     ".gitignore",
     "CHANGES.md",
     "Makefile",
@@ -30,6 +36,9 @@ REQUIRED = [
     "docs/plans/2026-06-09-make-gate-aliases.md",
     "docs/plans/2026-06-09-asset-catalog-metadata.md",
     "docs/plans/2026-06-10-plist-executable-name-tokens.md",
+    HOSTED_VALIDATION_PLAN,
+    SOURCE_MEMBERSHIP_PLAN,
+    CREDENTIAL_FREE_PLAN,
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -42,6 +51,30 @@ REQUIRED = [
     "scripts/check-baseline.py",
 ]
 
+EXPECTED_WORKFLOW = """name: Check
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  structural:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version: "3.12"
+      - run: make check
+"""
+
 
 def read(path):
     return (ROOT / path).read_text(encoding="utf-8", errors="replace")
@@ -52,6 +85,82 @@ def has_image(images, **expected):
         all(image.get(key) == value for key, value in expected.items())
         for image in images
     )
+
+
+def pbx_section(project, name):
+    match = re.search(
+        rf"/\* Begin {re.escape(name)} section \*/(.*?)/\* End {re.escape(name)} section \*/",
+        project,
+        re.DOTALL,
+    )
+    return match.group(1) if match else ""
+
+
+def pbx_objects(project, section_name):
+    section = pbx_section(project, section_name)
+    return {
+        object_id: body
+        for object_id, body in re.findall(
+            r"^\t\t([A-F0-9]{24})(?: /\*.*?\*/)? = \{(.*?)\};\s*$",
+            section,
+            re.DOTALL | re.MULTILINE,
+        )
+    }
+
+
+def pbx_list_ids(body, field):
+    match = re.search(rf"\b{re.escape(field)} = \((.*?)\);", body, re.DOTALL)
+    return re.findall(r"\b[A-F0-9]{24}\b", match.group(1)) if match else []
+
+
+def pbx_field(body, field):
+    match = re.search(rf"\b{re.escape(field)} = (?:\"([^\"]+)\"|([^;]+));", body)
+    return (match.group(1) or match.group(2)).strip() if match else None
+
+
+def pbx_id_field(body, field):
+    match = re.search(rf"\b{re.escape(field)} = ([A-F0-9]{{24}})\b", body)
+    return match.group(1) if match else None
+
+
+def target_source_paths(project):
+    build_files = pbx_objects(project, "PBXBuildFile")
+    file_references = pbx_objects(project, "PBXFileReference")
+    source_phases = pbx_objects(project, "PBXSourcesBuildPhase")
+    native_targets = pbx_objects(project, "PBXNativeTarget")
+
+    file_paths = {
+        object_id: pbx_field(body, "path")
+        for object_id, body in file_references.items()
+    }
+    build_file_paths = {
+        object_id: file_paths.get(pbx_id_field(body, "fileRef"))
+        for object_id, body in build_files.items()
+    }
+    phase_paths = {
+        object_id: {
+            build_file_paths.get(build_file_id) or f"<unresolved:{build_file_id}>"
+            for build_file_id in pbx_list_ids(body, "files")
+        }
+        for object_id, body in source_phases.items()
+    }
+
+    targets = {}
+    duplicate_target_names = set()
+    for body in native_targets.values():
+        target_name = pbx_field(body, "name")
+        source_phase_ids = [
+            phase_id
+            for phase_id in pbx_list_ids(body, "buildPhases")
+            if phase_id in source_phases
+        ]
+        target_paths = set()
+        for phase_id in source_phase_ids:
+            target_paths.update(phase_paths[phase_id])
+        if target_name in targets:
+            duplicate_target_names.add(target_name)
+        targets[target_name] = target_paths
+    return targets, duplicate_target_names
 
 
 def main():
@@ -70,6 +179,23 @@ def main():
     ]:
         if phrase not in makefile:
             failures.append(f"Makefile must include {phrase}")
+
+    workflow = read(".github/workflows/check.yml")
+    if workflow != EXPECTED_WORKFLOW:
+        failures.append(
+            "Check workflow must exactly preserve the pinned, credential-free "
+            "macOS structural validation contract"
+        )
+
+    agents = read("AGENTS.md")
+    for phrase in [
+        "make check",
+        "Do not commit Parse credentials",
+        "preserve legacy Xcode project settings",
+        "non-placeholder XCTest coverage",
+    ]:
+        if phrase.lower() not in agents.lower():
+            failures.append(f"AGENTS.md must preserve the guardrail: {phrase}")
 
     gitignore = read(".gitignore")
     for phrase in ["DerivedData", "*.xcuserstate", ".env", "*.log", "tmp/"]:
@@ -174,6 +300,28 @@ def main():
             failures.append(f"project.pbxproj must reference {phrase}")
     if pbxproj.count("defaultConfigurationName = Release;") < 3:
         failures.append("project.pbxproj must keep Release as the default configuration for project and native targets")
+    expected_target_sources = {
+        "parse_example": {"AppDelegate.swift", "ViewController.swift"},
+        "parse_exampleTests": {"parse_exampleTests.swift"},
+    }
+    actual_target_sources, duplicate_target_names = target_source_paths(pbxproj)
+    if duplicate_target_names:
+        failures.append(
+            "project.pbxproj must not define duplicate native target names: "
+            f"{sorted(duplicate_target_names)}"
+        )
+    if set(actual_target_sources) != set(expected_target_sources):
+        failures.append(
+            "project.pbxproj must define exactly the expected native targets; "
+            f"found {sorted(name for name in actual_target_sources if name)}"
+        )
+    for target_name, expected_sources in expected_target_sources.items():
+        actual_sources = actual_target_sources.get(target_name)
+        if actual_sources != expected_sources:
+            failures.append(
+                f"{target_name} Sources phase must contain exactly "
+                f"{sorted(expected_sources)}; found {sorted(actual_sources or set())}"
+            )
 
     app_delegate = read("parse_example/AppDelegate.swift")
     view_controller = read("parse_example/ViewController.swift")
@@ -233,6 +381,9 @@ def main():
         "make test",
         "make build",
         "make verify",
+        "hosted macOS",
+        "structural validation",
+        "source target membership",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
@@ -272,6 +423,26 @@ def main():
         or "CFBundleName" not in plist_token_plan
     ):
         failures.append("plist executable/name token plan must record completed status and verification")
+    hosted_validation_plan = read(HOSTED_VALIDATION_PLAN)
+    if "status: completed" not in hosted_validation_plan or "make check" not in hosted_validation_plan:
+        failures.append("hosted structural validation plan must record completed status and verification")
+    source_membership_plan = read(SOURCE_MEMBERSHIP_PLAN)
+    if "status: completed" not in source_membership_plan or "PBXSourcesBuildPhase" not in source_membership_plan:
+        failures.append("source target membership plan must record completed status and verification")
+    credential_free_plan = read(CREDENTIAL_FREE_PLAN)
+    if len(re.findall(r"^status: completed$", credential_free_plan, re.MULTILINE)) != 1:
+        failures.append(
+            "credential-free hosted validation plan must have one completed status field"
+        )
+    for phrase in [
+        "persist-credentials: false",
+        "exact workflow contract",
+        "hostile mutations",
+    ]:
+        if phrase not in credential_free_plan:
+            failures.append(
+                f"credential-free hosted validation plan must record {phrase}"
+            )
 
     if failures:
         for failure in failures:

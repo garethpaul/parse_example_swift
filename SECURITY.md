@@ -39,10 +39,17 @@ Helpful reports include:
   XCTest target metadata changes remain reviewable when Xcode is unavailable.
 - Keep plist executable and product-name tokens explicit so app and XCTest
   target launch metadata stays reviewable when Xcode is unavailable.
+- Pinned, read-only hosted macOS structural validation checks project metadata
+  without credentials, Parse SDK access, or service-backed tests.
+- Hosted checkout uses `persist-credentials: false`, and the static baseline
+  enforces the exact workflow contract to reject extra actions or shadowed
+  security settings.
 - Keep the main storyboard plist entry aligned with the checked-in `Main`
   storyboard so startup metadata remains reviewable.
 - Keep target default configurations explicit so project metadata changes are
   deterministic during static review.
+- Keep source target membership explicit so app code and XCTest code cannot be
+  silently reassigned through Xcode project metadata.
 - Keep asset catalog metadata reviewable so app icon and launch image settings
   stay aligned with the Xcode project.
 - Run `make lint`, `make test`, `make build`, `make verify`, and `make check`

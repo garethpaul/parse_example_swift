@@ -66,6 +66,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   `Main`.
 - Xcode project and native target default configurations stay explicit so the
   app and XCTest target default configurations remain deterministic.
+- Static checks resolve source target membership through Xcode build phases so
+  app and XCTest Swift files cannot silently move between targets.
 - Asset catalog metadata for `AppIcon` and `LaunchImage` stays parseable and
   aligned with the Xcode project compiler settings.
 
@@ -81,6 +83,13 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 
 The Make aliases use the checked-in static baseline so local verification still
 works on machines without Xcode.
+Pinned hosted macOS structural validation runs the same `make check` contract
+on Python 3.12. It does not claim that this Swift 1-era iOS 8 project builds or
+that XCTest runs on current Xcode.
+
+Hosted checkout credentials are not persisted, and the baseline enforces the
+complete workflow contract so extra actions, events, permissions, or shadowed
+YAML settings cannot silently weaken validation.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
