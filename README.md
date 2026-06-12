@@ -87,6 +87,10 @@ Pinned hosted macOS structural validation runs the same `make check` contract
 on Python 3.12. It does not claim that this Swift 1-era iOS 8 project builds or
 that XCTest runs on current Xcode.
 
+Hosted checkout credentials are not persisted, and the baseline enforces the
+complete workflow contract so extra actions, events, permissions, or shadowed
+YAML settings cannot silently weaken validation.
+
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
 ## Configuration and Secrets

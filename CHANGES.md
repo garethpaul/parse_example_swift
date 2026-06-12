@@ -1,5 +1,12 @@
 # Changes
 
+## 2026-06-12
+
+- Disabled persisted checkout credentials in hosted macOS validation and made
+  the baseline enforce the exact pinned workflow contract.
+- Added contributor-safety checks and rejected duplicate or unexpected Xcode
+  native targets in source membership validation.
+
 ## 2026-06-09
 
 - Added stable `make lint`, `make test`, `make build`, and `make verify`

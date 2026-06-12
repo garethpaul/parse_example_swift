@@ -41,6 +41,9 @@ Helpful reports include:
   target launch metadata stays reviewable when Xcode is unavailable.
 - Pinned, read-only hosted macOS structural validation checks project metadata
   without credentials, Parse SDK access, or service-backed tests.
+- Hosted checkout uses `persist-credentials: false`, and the static baseline
+  enforces the exact workflow contract to reject extra actions or shadowed
+  security settings.
 - Keep the main storyboard plist entry aligned with the checked-in `Main`
   storyboard so startup metadata remains reviewable.
 - Keep target default configurations explicit so project metadata changes are

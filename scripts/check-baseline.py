@@ -14,8 +14,10 @@ PLAN = "docs/plans/2026-06-08-parse-swift-baseline.md"
 STORYBOARD_PLAN = "docs/plans/2026-06-09-storyboard-initial-view-controller.md"
 HOSTED_VALIDATION_PLAN = "docs/plans/2026-06-10-hosted-structural-validation.md"
 SOURCE_MEMBERSHIP_PLAN = "docs/plans/2026-06-10-source-target-membership.md"
+CREDENTIAL_FREE_PLAN = "docs/plans/2026-06-12-credential-free-hosted-validation.md"
 REQUIRED = [
     ".github/workflows/check.yml",
+    "AGENTS.md",
     ".gitignore",
     "CHANGES.md",
     "Makefile",
@@ -36,6 +38,7 @@ REQUIRED = [
     "docs/plans/2026-06-10-plist-executable-name-tokens.md",
     HOSTED_VALIDATION_PLAN,
     SOURCE_MEMBERSHIP_PLAN,
+    CREDENTIAL_FREE_PLAN,
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -48,9 +51,41 @@ REQUIRED = [
     "scripts/check-baseline.py",
 ]
 
+EXPECTED_WORKFLOW = """name: Check
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  structural:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version: "3.12"
+      - run: make check
+"""
+
 
 def read(path):
     return (ROOT / path).read_text(encoding="utf-8", errors="replace")
+
+
+def markdown_section(text, heading):
+    match = re.search(
+        rf"(?ms)^## {re.escape(heading)}\s*$\n(.*?)(?=^## |\Z)",
+        text,
+    )
+    return match.group(1).strip() if match else ""
 
 
 def has_image(images, **expected):
@@ -119,6 +154,7 @@ def target_source_paths(project):
     }
 
     targets = {}
+    duplicate_target_names = set()
     for body in native_targets.values():
         target_name = pbx_field(body, "name")
         source_phase_ids = [
@@ -129,8 +165,10 @@ def target_source_paths(project):
         target_paths = set()
         for phase_id in source_phase_ids:
             target_paths.update(phase_paths[phase_id])
+        if target_name in targets:
+            duplicate_target_names.add(target_name)
         targets[target_name] = target_paths
-    return targets
+    return targets, duplicate_target_names
 
 
 def main():
@@ -151,18 +189,21 @@ def main():
             failures.append(f"Makefile must include {phrase}")
 
     workflow = read(".github/workflows/check.yml")
-    for expected in [
-        "permissions:\n  contents: read",
-        "cancel-in-progress: true",
-        "runs-on: macos-15",
-        "timeout-minutes: 10",
-        "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10",
-        "actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405",
-        'python-version: "3.12"',
-        "run: make check",
+    if workflow != EXPECTED_WORKFLOW:
+        failures.append(
+            "Check workflow must exactly preserve the pinned, credential-free "
+            "macOS structural validation contract"
+        )
+
+    agents = read("AGENTS.md")
+    for phrase in [
+        "make check",
+        "Do not commit Parse credentials",
+        "preserve legacy Xcode project settings",
+        "non-placeholder XCTest coverage",
     ]:
-        if expected not in workflow:
-            failures.append(f"Check workflow must keep {expected}")
+        if phrase.lower() not in agents.lower():
+            failures.append(f"AGENTS.md must preserve the guardrail: {phrase}")
 
     gitignore = read(".gitignore")
     for phrase in ["DerivedData", "*.xcuserstate", ".env", "*.log", "tmp/"]:
@@ -271,7 +312,17 @@ def main():
         "parse_example": {"AppDelegate.swift", "ViewController.swift"},
         "parse_exampleTests": {"parse_exampleTests.swift"},
     }
-    actual_target_sources = target_source_paths(pbxproj)
+    actual_target_sources, duplicate_target_names = target_source_paths(pbxproj)
+    if duplicate_target_names:
+        failures.append(
+            "project.pbxproj must not define duplicate native target names: "
+            f"{sorted(duplicate_target_names)}"
+        )
+    if set(actual_target_sources) != set(expected_target_sources):
+        failures.append(
+            "project.pbxproj must define exactly the expected native targets; "
+            f"found {sorted(name for name in actual_target_sources if name)}"
+        )
     for target_name, expected_sources in expected_target_sources.items():
         actual_sources = actual_target_sources.get(target_name)
         if actual_sources != expected_sources:
@@ -386,6 +437,48 @@ def main():
     source_membership_plan = read(SOURCE_MEMBERSHIP_PLAN)
     if "status: completed" not in source_membership_plan or "PBXSourcesBuildPhase" not in source_membership_plan:
         failures.append("source target membership plan must record completed status and verification")
+    credential_free_plan = read(CREDENTIAL_FREE_PLAN)
+    credential_free_status = re.findall(
+        r"(?mi)^status:\s*(.+?)\s*$", credential_free_plan
+    )
+    credential_free_work = markdown_section(credential_free_plan, "Work Completed")
+    credential_free_verification = markdown_section(
+        credential_free_plan, "Verification Completed"
+    )
+    if credential_free_status != ["completed"] or not credential_free_work:
+        failures.append(
+            "credential-free hosted validation plan must record one completed status and completed work"
+        )
+    if not credential_free_verification or re.search(
+        r"(?i)\b(?:pending|todo|tbd|not run)\b", credential_free_verification
+    ):
+        failures.append(
+            "credential-free hosted validation plan must record finished verification without pending markers"
+        )
+    for evidence in [
+        "persist-credentials: false",
+        "make check",
+        "make verify",
+        "make lint",
+        "make test",
+        "make build",
+        "python3 -W error scripts/check-baseline.py",
+        "git diff --check",
+        "Twelve focused hostile mutations",
+        "27390789152",
+        "27390794889",
+        "44affc3f1806bcc1ebee102594a9396779704674",
+        "df4cb1c069e1874edd31b4311f1884172cec0e10",
+        "a309ff8b426b58ec0e2a45f0f869d46889d02405",
+        "PBXSourcesBuildPhase",
+        "AppDelegate.swift",
+        "ViewController.swift",
+        "parse_exampleTests.swift",
+    ]:
+        if evidence not in credential_free_verification:
+            failures.append(
+                f"credential-free hosted validation plan must preserve verification evidence: {evidence}"
+            )
 
     if failures:
         for failure in failures:
