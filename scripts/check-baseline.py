@@ -80,6 +80,14 @@ def read(path):
     return (ROOT / path).read_text(encoding="utf-8", errors="replace")
 
 
+def markdown_section(text, heading):
+    match = re.search(
+        rf"(?ms)^## {re.escape(heading)}\s*$\n(.*?)(?=^## |\Z)",
+        text,
+    )
+    return match.group(1).strip() if match else ""
+
+
 def has_image(images, **expected):
     return any(
         all(image.get(key) == value for key, value in expected.items())
@@ -430,18 +438,46 @@ def main():
     if "status: completed" not in source_membership_plan or "PBXSourcesBuildPhase" not in source_membership_plan:
         failures.append("source target membership plan must record completed status and verification")
     credential_free_plan = read(CREDENTIAL_FREE_PLAN)
-    if len(re.findall(r"^status: completed$", credential_free_plan, re.MULTILINE)) != 1:
+    credential_free_status = re.findall(
+        r"(?mi)^status:\s*(.+?)\s*$", credential_free_plan
+    )
+    credential_free_work = markdown_section(credential_free_plan, "Work Completed")
+    credential_free_verification = markdown_section(
+        credential_free_plan, "Verification Completed"
+    )
+    if credential_free_status != ["completed"] or not credential_free_work:
         failures.append(
-            "credential-free hosted validation plan must have one completed status field"
+            "credential-free hosted validation plan must record one completed status and completed work"
         )
-    for phrase in [
+    if not credential_free_verification or re.search(
+        r"(?i)\b(?:pending|todo|tbd|not run)\b", credential_free_verification
+    ):
+        failures.append(
+            "credential-free hosted validation plan must record finished verification without pending markers"
+        )
+    for evidence in [
         "persist-credentials: false",
-        "exact workflow contract",
-        "hostile mutations",
+        "make check",
+        "make verify",
+        "make lint",
+        "make test",
+        "make build",
+        "python3 -W error scripts/check-baseline.py",
+        "git diff --check",
+        "Twelve focused hostile mutations",
+        "27390789152",
+        "27390794889",
+        "44affc3f1806bcc1ebee102594a9396779704674",
+        "df4cb1c069e1874edd31b4311f1884172cec0e10",
+        "a309ff8b426b58ec0e2a45f0f869d46889d02405",
+        "PBXSourcesBuildPhase",
+        "AppDelegate.swift",
+        "ViewController.swift",
+        "parse_exampleTests.swift",
     ]:
-        if phrase not in credential_free_plan:
+        if evidence not in credential_free_verification:
             failures.append(
-                f"credential-free hosted validation plan must record {phrase}"
+                f"credential-free hosted validation plan must preserve verification evidence: {evidence}"
             )
 
     if failures:
