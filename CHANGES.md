@@ -2,6 +2,9 @@
 
 ## 2026-06-13
 
+- Recorded the exact Xcode 6-era, iOS 8, legacy Swift, and absent dependency
+  metadata that must precede any modern toolchain or Parse SDK compatibility
+  claim.
 - Defined the intended credential-free Parse scenario: authenticated private
   notes, owner-scoped reads and writes, explicit UI outcomes, a deterministic
   fake-first application boundary, and separate SDK compatibility work.

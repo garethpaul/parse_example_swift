@@ -16,6 +16,12 @@ client capability. See
 [`docs/intended-parse-scenario.md`](docs/intended-parse-scenario.md) for the
 data, authorization, state, compatibility, and non-goal contract.
 
+The checked-in Xcode 6-era, iOS 8, legacy Swift metadata and absent dependency
+declarations are inventoried in
+[`docs/legacy-toolchain-compatibility.md`](docs/legacy-toolchain-compatibility.md).
+Structural validation is not a current-Xcode build or Parse SDK compatibility
+claim.
+
 This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: Swift (3), C/C++ headers (1).
 
 ## Repository Contents

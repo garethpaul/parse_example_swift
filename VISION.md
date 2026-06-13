@@ -50,10 +50,13 @@ Priority:
   available as no-Xcode local verification gates
 - Keep the intended Parse scenario limited to authenticated owner-scoped
   private notes behind a deterministic fake-first application boundary
+- Keep the Xcode 6-era iOS 8 compatibility inventory explicit until a selected
+  Swift, Xcode, deployment-target, and Parse SDK configuration builds and tests
 
 Next priorities:
 
-- Identify the required Parse SDK version and installation path
+- Select and prove an exact Parse SDK version and installation path in a
+  dedicated compatibility decision
 - Add tests around any future Parse-backed behavior before service calls
 - Add a small model or login example only with testable behavior
 - Update the Swift syntax in a dedicated modernization pass

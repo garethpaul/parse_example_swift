@@ -1,6 +1,6 @@
 # Legacy Toolchain Compatibility Inventory
 
-status: pending
+status: completed
 
 ## Context
 
@@ -27,8 +27,24 @@ before selecting a migration or Parse SDK path.
 
 ## Work Completed
 
-Pending implementation.
+- Added an exact checked-in inventory covering project format, Xcode upgrade
+  marker, deployment target, legacy Swift syntax, absent Swift-version setting,
+  and absent package-manager or Parse SDK metadata.
+- Documented what structural validation proves, what it cannot prove, and the
+  evidence required before selecting a modern Xcode, Swift, deployment target,
+  dependency manager, or Parse SDK path.
+- Added current contributor/security guidance and mutation-sensitive project,
+  source, dependency-absence, documentation, and completed-plan contracts.
 
 ## Verification Completed
 
-Pending implementation and validation.
+- `make lint`, `make test`, `make build`, `make verify`, and `make check`
+- Ran the baseline checker from an external working directory.
+- Parsed the workflow YAML, Python checker, plist files, storyboard XML,
+  README SVG, asset-catalog JSON, and inventoried project metadata.
+- Confirmed focused hostile mutations to project facts, dependency absence,
+  current documentation, and completed-plan evidence are rejected.
+- `git diff --check`
+- The intended-path secret and generated-artifact scan passed; Swift source,
+  Xcode project, plists, storyboard, assets, signing metadata, dependency
+  metadata, and deployment target had no diff.

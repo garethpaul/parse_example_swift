@@ -47,6 +47,10 @@ Helpful reports include:
 - Keep Xcode signing metadata credential-free. Do not commit a development
   team identifier, provisioning profile UUID or specifier, entitlements path,
   or account-specific signing identity.
+- Treat the Xcode 6-era iOS 8 project and absent dependency metadata as a
+  compatibility inventory, not proof that current Xcode or a Parse SDK builds.
+  Require an exact SDK resolution and simulator/XCTest evidence before making
+  a compatibility claim.
 - Keep the main storyboard plist entry aligned with the checked-in `Main`
   storyboard so startup metadata remains reviewable.
 - Keep target default configurations explicit so project metadata changes are
