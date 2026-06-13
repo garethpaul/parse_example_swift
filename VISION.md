@@ -37,6 +37,8 @@ Priority:
   target
 - Keep the no-Xcode structural validation gate running on pinned hosted macOS
 - Keep hosted checkout credential-free and reject workflow drift structurally
+- Keep credential-free signing metadata free of Apple account, provisioning,
+  entitlements, and certificate-specific values
 - Keep the storyboard initial view controller bound to the checked-in
   `ViewController` class
 - Keep the main storyboard plist entry aligned with the checked-in `Main`

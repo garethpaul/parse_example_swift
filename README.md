@@ -91,6 +91,10 @@ Hosted checkout credentials are not persisted, and the baseline enforces the
 complete workflow contract so extra actions, events, permissions, or shadowed
 YAML settings cannot silently weaken validation.
 
+Credential-free signing metadata is also enforced: the Xcode project must not
+contain a development team, provisioning profile, entitlements path, or
+account-specific signing identity.
+
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
 ## Configuration and Secrets

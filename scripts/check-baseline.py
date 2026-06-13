@@ -15,6 +15,7 @@ STORYBOARD_PLAN = "docs/plans/2026-06-09-storyboard-initial-view-controller.md"
 HOSTED_VALIDATION_PLAN = "docs/plans/2026-06-10-hosted-structural-validation.md"
 SOURCE_MEMBERSHIP_PLAN = "docs/plans/2026-06-10-source-target-membership.md"
 CREDENTIAL_FREE_PLAN = "docs/plans/2026-06-12-credential-free-hosted-validation.md"
+SIGNING_METADATA_PLAN = "docs/plans/2026-06-13-credential-free-signing-metadata.md"
 REQUIRED = [
     ".github/workflows/check.yml",
     "AGENTS.md",
@@ -39,6 +40,7 @@ REQUIRED = [
     HOSTED_VALIDATION_PLAN,
     SOURCE_MEMBERSHIP_PLAN,
     CREDENTIAL_FREE_PLAN,
+    SIGNING_METADATA_PLAN,
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -201,6 +203,7 @@ def main():
         "Do not commit Parse credentials",
         "preserve legacy Xcode project settings",
         "non-placeholder XCTest coverage",
+        "credential-free signing metadata",
     ]:
         if phrase.lower() not in agents.lower():
             failures.append(f"AGENTS.md must preserve the guardrail: {phrase}")
@@ -296,6 +299,37 @@ def main():
                     failures.append("Main.storyboard ViewController must use the target module provider")
 
     pbxproj = read("parse_example.xcodeproj/project.pbxproj")
+    signing_settings = []
+    for line in pbxproj.splitlines():
+        match = re.match(
+            r'^\s*"?([A-Z][A-Z0-9_]*)(?:\[[^]]+\])?"?\s*=\s*(.*?);\s*$',
+            line,
+        )
+        if match:
+            signing_settings.append(match.groups())
+
+    forbidden_signing_settings = {
+        "CODE_SIGN_ENTITLEMENTS",
+        "DEVELOPMENT_TEAM",
+        "PROVISIONING_PROFILE",
+        "PROVISIONING_PROFILE_SPECIFIER",
+    }
+    present_forbidden_settings = sorted(
+        name for name, _ in signing_settings if name in forbidden_signing_settings
+    )
+    if present_forbidden_settings:
+        failures.append(
+            "Xcode project must not contain account-specific signing settings: "
+            + ", ".join(present_forbidden_settings)
+        )
+    signing_identities = [
+        value for name, value in signing_settings if name == "CODE_SIGN_IDENTITY"
+    ]
+    if signing_identities != ['"iPhone Developer"', '"iPhone Developer"']:
+        failures.append(
+            "Xcode project must retain only the two historical generic "
+            "iPhone Developer signing identities"
+        )
     for phrase in [
         "parse_example",
         "parse_exampleTests",
@@ -392,6 +426,7 @@ def main():
         "hosted macOS",
         "structural validation",
         "source target membership",
+        "credential-free signing metadata",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
@@ -478,6 +513,20 @@ def main():
         if evidence not in credential_free_verification:
             failures.append(
                 f"credential-free hosted validation plan must preserve verification evidence: {evidence}"
+            )
+
+    signing_metadata_plan = read(SIGNING_METADATA_PLAN)
+    for phrase in [
+        "status: completed",
+        "make check",
+        "six hostile mutations",
+        "DEVELOPMENT_TEAM",
+        "PROVISIONING_PROFILE_SPECIFIER",
+        "CODE_SIGN_ENTITLEMENTS",
+    ]:
+        if phrase not in signing_metadata_plan:
+            failures.append(
+                f"credential-free signing metadata plan must record {phrase}"
             )
 
     if failures:
