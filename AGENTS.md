@@ -46,6 +46,9 @@
 
 - No required secret or credential file was identified in the repository scan. If you add integrations later, keep secrets out of git.
 - Do not commit Parse credentials, application IDs, client keys, production endpoints, or captured user data.
+- Preserve credential-free signing metadata; do not add Apple development team
+  IDs, provisioning profiles, entitlements paths, or account-specific signing
+  identities to the Xcode project.
 - This looks like an Apple platform project or sample. Xcode, Swift, CocoaPods, and deployment target versions may need to match the original project era.
 - Keep non-placeholder XCTest coverage in place before adding Parse SDK calls or service-backed flows.
 - Keep the non-empty bundle identifier assertion in place for scaffold changes.

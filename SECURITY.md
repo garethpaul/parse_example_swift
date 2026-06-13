@@ -44,6 +44,9 @@ Helpful reports include:
 - Hosted checkout uses `persist-credentials: false`, and the static baseline
   enforces the exact workflow contract to reject extra actions or shadowed
   security settings.
+- Keep Xcode signing metadata credential-free. Do not commit a development
+  team identifier, provisioning profile UUID or specifier, entitlements path,
+  or account-specific signing identity.
 - Keep the main storyboard plist entry aligned with the checked-in `Main`
   storyboard so startup metadata remains reviewable.
 - Keep target default configurations explicit so project metadata changes are
