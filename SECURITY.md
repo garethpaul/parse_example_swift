@@ -66,6 +66,14 @@ If this project requests device permissions such as location, camera, microphone
 Do not commit Parse application IDs, client keys, session tokens, production
 endpoints, local provisioning data, or captured user records.
 
+The initial scenario in
+[`docs/intended-parse-scenario.md`](docs/intended-parse-scenario.md) permits
+only owner-scoped private notes. A client must not contain a master/admin key,
+perform public or cross-user queries, or send a note request without an
+authenticated user. Future unit tests must use deterministic fakes and
+sanitized failures rather than service credentials, backend responses, or
+captured note contents.
+
 ## Dependency and Supply Chain Security
 
 Dependency updates should come from trusted package managers and should keep lockfiles in sync when lockfiles exist. Do not commit credentials, private keys, tokens, generated secrets, or machine-local configuration. If a vulnerability depends on a compromised package, typosquatting risk, insecure transitive dependency, or unsafe build step, include the package name, affected version, and the path through which it is used.

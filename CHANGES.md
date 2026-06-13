@@ -2,6 +2,9 @@
 
 ## 2026-06-13
 
+- Defined the intended credential-free Parse scenario: authenticated private
+  notes, owner-scoped reads and writes, explicit UI outcomes, a deterministic
+  fake-first application boundary, and separate SDK compatibility work.
 - Added a structural guard for credential-free signing metadata that rejects
   Apple development teams, provisioning profiles, entitlements paths, and
   account-specific signing identities in the Xcode project.
