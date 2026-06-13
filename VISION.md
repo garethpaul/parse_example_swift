@@ -48,10 +48,11 @@ Priority:
 - Keep asset catalog metadata aligned with app icon and launch image settings
 - Keep `make lint`, `make test`, `make build`, `make verify`, and `make check`
   available as no-Xcode local verification gates
+- Keep the intended Parse scenario limited to authenticated owner-scoped
+  private notes behind a deterministic fake-first application boundary
 
 Next priorities:
 
-- Add a README that explains the intended Parse scenario
 - Identify the required Parse SDK version and installation path
 - Add tests around any future Parse-backed behavior before service calls
 - Add a small model or login example only with testable behavior
@@ -80,6 +81,7 @@ for examples and tests.
 - Broad UI work before the sample scenario is defined
 - SDK migrations without setup notes
 - Untested service calls
+- Public, cross-user, or admin-capable behavior in the initial note scenario
 
 This list is a roadmap guardrail, not a permanent rule.
 Strong user demand and strong technical rationale can change it.

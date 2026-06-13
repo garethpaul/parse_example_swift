@@ -10,6 +10,12 @@
 This is a legacy Swift/Xcode scaffold. It does not currently include the Parse
 SDK, Parse credentials, or an implemented backend login/data flow.
 
+The intended first integration is a signed-in user's private-note flow with
+owner-scoped reads and writes, fake-backed application tests, and no privileged
+client capability. See
+[`docs/intended-parse-scenario.md`](docs/intended-parse-scenario.md) for the
+data, authorization, state, compatibility, and non-goal contract.
+
 This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: Swift (3), C/C++ headers (1).
 
 ## Repository Contents
@@ -23,6 +29,7 @@ This README is based on the checked-in source, manifests, scripts, and repositor
 - `scripts/check-baseline.py` - static baseline checks used by `make check`
 - `SECURITY.md` - security reporting and disclosure guidance
 - `VISION.md` - project direction and maintenance guardrails
+- `docs/intended-parse-scenario.md` - future Parse flow and safety contract
 
 Additional scan context:
 
@@ -70,6 +77,9 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   app and XCTest Swift files cannot silently move between targets.
 - Asset catalog metadata for `AppIcon` and `LaunchImage` stays parseable and
   aligned with the Xcode project compiler settings.
+- Any future Parse implementation must preserve the documented private-note
+  ownership boundary and deterministic fake-first test seam before service
+  calls are added.
 
 ## Testing and Verification
 

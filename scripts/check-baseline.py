@@ -16,6 +16,7 @@ HOSTED_VALIDATION_PLAN = "docs/plans/2026-06-10-hosted-structural-validation.md"
 SOURCE_MEMBERSHIP_PLAN = "docs/plans/2026-06-10-source-target-membership.md"
 CREDENTIAL_FREE_PLAN = "docs/plans/2026-06-12-credential-free-hosted-validation.md"
 SIGNING_METADATA_PLAN = "docs/plans/2026-06-13-credential-free-signing-metadata.md"
+SCENARIO_PLAN = "docs/plans/2026-06-13-intended-parse-scenario.md"
 REQUIRED = [
     ".github/workflows/check.yml",
     "AGENTS.md",
@@ -27,6 +28,7 @@ REQUIRED = [
     "VISION.md",
     "Swift.h",
     "docs/readme-overview.svg",
+    "docs/intended-parse-scenario.md",
     PLAN,
     "docs/plans/2026-06-09-non-placeholder-xctest.md",
     "docs/plans/2026-06-09-non-empty-bundle-identifier.md",
@@ -41,6 +43,7 @@ REQUIRED = [
     SOURCE_MEMBERSHIP_PLAN,
     CREDENTIAL_FREE_PLAN,
     SIGNING_METADATA_PLAN,
+    SCENARIO_PLAN,
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -392,6 +395,7 @@ def main():
         "README.md",
         "SECURITY.md",
         "VISION.md",
+        "docs/intended-parse-scenario.md",
     ])
     for forbidden in [
         "Parse.setApplicationId",
@@ -427,6 +431,8 @@ def main():
         "structural validation",
         "source target membership",
         "credential-free signing metadata",
+        "owner-scoped",
+        "deterministic fake",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
@@ -527,6 +533,66 @@ def main():
         if phrase not in signing_metadata_plan:
             failures.append(
                 f"credential-free signing metadata plan must record {phrase}"
+            )
+
+    scenario = " ".join(read("docs/intended-parse-scenario.md").split())
+    for phrase in [
+        "Review date: 2026-06-13",
+        "current repository has no Parse SDK",
+        "signed-in user managing a private note",
+        "lists only notes owned by the current user",
+        "owner-only access",
+        "query only records owned by the current user",
+        "missing user session must fail before any note query or write",
+        "signed out and authentication required",
+        "empty note list",
+        "save failure or list failure with a retry path",
+        "small application boundary",
+        "deterministic fake",
+        "Runtime-supplied configuration must stay outside version control",
+        "No master or admin key belongs in a client application",
+        "SDK version and installation path",
+        "separate compatibility decision",
+        "no public or cross-user query",
+        "no file uploads, geolocation, analytics, push notifications",
+        "No Swift or Xcode project changes",
+    ]:
+        if phrase not in scenario:
+            failures.append(f"intended Parse scenario must include {phrase}")
+
+    scenario_plan = read(SCENARIO_PLAN)
+    scenario_status = re.findall(r"(?mi)^status:\s*(.+?)\s*$", scenario_plan)
+    scenario_work = markdown_section(scenario_plan, "Work Completed")
+    scenario_verification = markdown_section(scenario_plan, "Verification Completed")
+    if scenario_status != ["completed"] or not scenario_work:
+        failures.append(
+            "intended Parse scenario plan must record one completed status and completed work"
+        )
+    if not scenario_verification or re.search(
+        r"(?i)\b(?:pending|todo|tbd|not run)\b", scenario_verification
+    ):
+        failures.append(
+            "intended Parse scenario plan must record completed verification"
+        )
+    for evidence in [
+        "make lint",
+        "make test",
+        "make build",
+        "make verify",
+        "make check",
+        "external working directory",
+        "workflow YAML",
+        "plist/storyboard XML",
+        "asset-catalog JSON",
+        "README SVG",
+        "hostile mutations rejected",
+        "implementation and project paths had no diff",
+        "git diff --check",
+        "secret, captured-identifier, and generated-artifact scan",
+    ]:
+        if evidence not in scenario_verification:
+            failures.append(
+                f"intended Parse scenario verification must record {evidence}"
             )
 
     if failures:
