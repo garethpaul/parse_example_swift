@@ -17,6 +17,7 @@ SOURCE_MEMBERSHIP_PLAN = "docs/plans/2026-06-10-source-target-membership.md"
 CREDENTIAL_FREE_PLAN = "docs/plans/2026-06-12-credential-free-hosted-validation.md"
 SIGNING_METADATA_PLAN = "docs/plans/2026-06-13-credential-free-signing-metadata.md"
 SCENARIO_PLAN = "docs/plans/2026-06-13-intended-parse-scenario.md"
+COMPATIBILITY_PLAN = "docs/plans/2026-06-13-legacy-toolchain-compatibility-inventory.md"
 REQUIRED = [
     ".github/workflows/check.yml",
     "AGENTS.md",
@@ -29,6 +30,7 @@ REQUIRED = [
     "Swift.h",
     "docs/readme-overview.svg",
     "docs/intended-parse-scenario.md",
+    "docs/legacy-toolchain-compatibility.md",
     PLAN,
     "docs/plans/2026-06-09-non-placeholder-xctest.md",
     "docs/plans/2026-06-09-non-empty-bundle-identifier.md",
@@ -44,6 +46,7 @@ REQUIRED = [
     CREDENTIAL_FREE_PLAN,
     SIGNING_METADATA_PLAN,
     SCENARIO_PLAN,
+    COMPATIBILITY_PLAN,
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -345,6 +348,19 @@ def main():
             failures.append(f"project.pbxproj must reference {phrase}")
     if pbxproj.count("defaultConfigurationName = Release;") < 3:
         failures.append("project.pbxproj must keep Release as the default configuration for project and native targets")
+    for phrase in [
+        "objectVersion = 46;",
+        "LastUpgradeCheck = 0600;",
+        'compatibilityVersion = "Xcode 3.2";',
+    ]:
+        if phrase not in pbxproj:
+            failures.append(f"project.pbxproj compatibility inventory must keep {phrase}")
+    if pbxproj.count("IPHONEOS_DEPLOYMENT_TARGET = 8.0;") != 2:
+        failures.append(
+            "project.pbxproj must keep exactly two inventoried iOS 8.0 deployment settings"
+        )
+    if "SWIFT_VERSION" in pbxproj:
+        failures.append("legacy project must not gain an unreviewed SWIFT_VERSION setting")
     expected_target_sources = {
         "parse_example": {"AppDelegate.swift", "ViewController.swift"},
         "parse_exampleTests": {"parse_exampleTests.swift"},
@@ -373,6 +389,12 @@ def main():
     tests = read("parse_exampleTests/parse_exampleTests.swift")
     if "UIApplicationDelegate" not in app_delegate:
         failures.append("AppDelegate.swift must define the app delegate")
+    for phrase in [
+        "@UIApplicationMain",
+        "application(application: UIApplication, didFinishLaunchingWithOptions",
+    ]:
+        if phrase not in app_delegate:
+            failures.append(f"legacy Swift compatibility inventory must keep {phrase}")
     if "UIViewController" not in view_controller:
         failures.append("ViewController.swift must define the view controller")
     if "XCTestCase" not in tests:
@@ -407,6 +429,25 @@ def main():
         if forbidden in source_text:
             failures.append(f"repository must not include live Parse credential or login snippet: {forbidden}")
 
+    dependency_markers = [
+        "Package.swift",
+        "Package.resolved",
+        "Podfile",
+        "Podfile.lock",
+        "Cartfile",
+        "Cartfile.resolved",
+    ]
+    present_dependency_markers = [
+        path for path in dependency_markers if (ROOT / path).exists()
+    ]
+    if present_dependency_markers:
+        failures.append(
+            "legacy compatibility inventory must not gain dependency metadata without review: "
+            + ", ".join(present_dependency_markers)
+        )
+    if re.search(r"(?m)^\s*import\s+Parse\w*\s*$", app_delegate + view_controller):
+        failures.append("legacy Swift source must not gain an unreviewed Parse import")
+
     docs = "\n".join(read(path) for path in ["README.md", "SECURITY.md", "VISION.md"])
     for phrase in [
         "make check",
@@ -433,9 +474,22 @@ def main():
         "credential-free signing metadata",
         "owner-scoped",
         "deterministic fake",
+        "Xcode 6-era",
+        "iOS 8",
+        "compatibility inventory",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
+
+    compatibility_claims = {
+        "README.md": "Structural validation is not a current-Xcode build or Parse SDK compatibility claim",
+        "SECURITY.md": "compatibility inventory, not proof that current Xcode or a Parse SDK builds",
+        "VISION.md": "Xcode 6-era iOS 8 compatibility inventory explicit",
+        "CHANGES.md": "must precede any modern toolchain or Parse SDK compatibility claim",
+    }
+    for path, phrase in compatibility_claims.items():
+        if phrase not in " ".join(read(path).split()):
+            failures.append(f"{path} must include {phrase}")
 
     plan = read(PLAN)
     if "status: completed" not in plan or "make check" not in plan:
@@ -594,6 +648,60 @@ def main():
             failures.append(
                 f"intended Parse scenario verification must record {evidence}"
             )
+
+    compatibility = " ".join(
+        read("docs/legacy-toolchain-compatibility.md").split()
+    )
+    for phrase in [
+        "objectVersion = 46",
+        "LastUpgradeCheck = 0600",
+        'compatibilityVersion = "Xcode 3.2"',
+        "IPHONEOS_DEPLOYMENT_TARGET = 8.0",
+        "no explicit `SWIFT_VERSION`",
+        "@UIApplicationMain",
+        "no `Package.swift`",
+        "`Podfile`",
+        "`Cartfile`",
+        "no Parse import",
+        "do not invoke an Xcode build",
+        "Passing structural validation does not prove compatibility",
+        "Parse SDK version and primary-source platform support evidence",
+        "simulator build and XCTest commands",
+    ]:
+        if phrase not in compatibility:
+            failures.append(f"legacy compatibility inventory must include {phrase}")
+
+    compatibility_plan = read(COMPATIBILITY_PLAN)
+    compatibility_status = re.findall(
+        r"(?mi)^status:\s*(.+?)\s*$", compatibility_plan
+    )
+    compatibility_work = markdown_section(compatibility_plan, "Work Completed")
+    compatibility_verification = markdown_section(
+        compatibility_plan, "Verification Completed"
+    )
+    if compatibility_status != ["completed"] or not compatibility_work:
+        failures.append(
+            "legacy compatibility plan must record completed status and work"
+        )
+    if not compatibility_verification or re.search(
+        r"(?i)\b(?:pending|todo|tbd|not run)\b", compatibility_verification
+    ):
+        failures.append("legacy compatibility plan must record completed verification")
+    for evidence in [
+        "make lint",
+        "make test",
+        "make build",
+        "make verify",
+        "make check",
+        "external working directory",
+        "workflow YAML",
+        "project metadata",
+        "hostile mutations",
+        "git diff --check",
+        "secret and generated-artifact scan",
+    ]:
+        if evidence not in compatibility_verification:
+            failures.append(f"legacy compatibility verification must record {evidence}")
 
     if failures:
         for failure in failures:
