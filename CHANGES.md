@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-14
+
+- Made every standard Make alias resolve the structural checker from the
+  repository root, including external absolute-Makefile calls.
+
 ## 2026-06-13
 
 - Recorded the exact Xcode 6-era, iOS 8, legacy Swift, and absent dependency
