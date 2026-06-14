@@ -18,6 +18,7 @@ CREDENTIAL_FREE_PLAN = "docs/plans/2026-06-12-credential-free-hosted-validation.
 SIGNING_METADATA_PLAN = "docs/plans/2026-06-13-credential-free-signing-metadata.md"
 SCENARIO_PLAN = "docs/plans/2026-06-13-intended-parse-scenario.md"
 COMPATIBILITY_PLAN = "docs/plans/2026-06-13-legacy-toolchain-compatibility-inventory.md"
+LOCATION_INDEPENDENT_MAKE_PLAN = "docs/plans/2026-06-14-location-independent-make-gates.md"
 REQUIRED = [
     ".github/workflows/check.yml",
     "AGENTS.md",
@@ -47,6 +48,7 @@ REQUIRED = [
     SIGNING_METADATA_PLAN,
     SCENARIO_PLAN,
     COMPATIBILITY_PLAN,
+    LOCATION_INDEPENDENT_MAKE_PLAN,
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -187,7 +189,8 @@ def main():
 
     makefile = read("Makefile")
     for phrase in [
-        "python3 scripts/check-baseline.py",
+        "override REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))",
+        'python3 "$(REPO_ROOT)/scripts/check-baseline.py"',
         "lint: static-check",
         "test: static-check",
         "build: static-check",
@@ -477,6 +480,7 @@ def main():
         "Xcode 6-era",
         "iOS 8",
         "compatibility inventory",
+        "absolute Makefile path works from another directory",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
@@ -490,6 +494,11 @@ def main():
     for path, phrase in compatibility_claims.items():
         if phrase not in " ".join(read(path).split()):
             failures.append(f"{path} must include {phrase}")
+    changes = " ".join(read("CHANGES.md").split())
+    if "external absolute-Makefile calls" not in changes:
+        failures.append(
+            "CHANGES.md must record external absolute-Makefile calls"
+        )
 
     plan = read(PLAN)
     if "status: completed" not in plan or "make check" not in plan:
@@ -702,6 +711,48 @@ def main():
     ]:
         if evidence not in compatibility_verification:
             failures.append(f"legacy compatibility verification must record {evidence}")
+
+    location_make_plan = read(LOCATION_INDEPENDENT_MAKE_PLAN)
+    location_make_status = re.findall(
+        r"(?mi)^status:\s*(.+?)\s*$", location_make_plan
+    )
+    location_make_work = markdown_section(location_make_plan, "Work Completed")
+    location_make_verification = markdown_section(
+        location_make_plan, "Verification Completed"
+    )
+    if location_make_status != ["completed"] or not location_make_work:
+        failures.append(
+            "location-independent Make plan must record one completed status "
+            "and completed work"
+        )
+    if not location_make_verification or re.search(
+        r"(?i)\b(?:pending|todo|tbd|not run)\b", location_make_verification
+    ):
+        failures.append(
+            "location-independent Make plan must record completed verification"
+        )
+    for evidence in [
+        "make lint",
+        "make test",
+        "make build",
+        "make verify",
+        "make check",
+        "make static-check",
+        "from `/tmp`",
+        "absolute",
+        "caller-supplied `REPO_ROOT=/tmp`",
+        "python3 -m py_compile scripts/check-baseline.py",
+        "workflow YAML",
+        "both plists",
+        "storyboard XML",
+        "README SVG",
+        "asset-catalog JSON",
+        "Nine isolated hostile mutations were rejected",
+    ]:
+        if evidence not in location_make_verification:
+            failures.append(
+                f"location-independent Make verification must record {evidence}"
+            )
 
     if failures:
         for failure in failures:
