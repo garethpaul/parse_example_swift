@@ -27,8 +27,8 @@ PROTECTED_FILE_SHA256 = {
     "parse_example/Info.plist": "a83724f00327b342bac26641e2a91647a7b897c714d90e8eddf9bd45e82339eb",
     "parse_exampleTests/Info.plist": "ec09c3ddaec1a2711168f725d53813cc59e40a6b9ff59fd855beb832d2e5e5db",
     "parse_exampleTests/parse_exampleTests.swift": "c35adf82b4e1ff833d876354d4f7d1d107fc022456b15283f38d6d2670532741",
-    "scripts/check-baseline.py": "bec7a520dc897f39be9d2187867cd699289d19f5a3f6d2cfce0045b7c38d6252",
-    "tests/test_check_baseline.py": "91339441aea5a3abbee8465f2add80c5b49d5fd5c4f41c2dd546a6498a102425",
+    "scripts/check-baseline.py": "f9a0472d79a18c8b479f1f958d859fb0744988f3c59f95f3c0f26ce32d18fb30",
+    "tests/test_check_baseline.py": "472601b178e85e9980b63fb5b03724fb4928f15ec895092f159b869b4e656c00",
 }
 WORKFLOW_TEMPLATE = """name: Check
 on:
@@ -97,6 +97,10 @@ def main():
         if not path.is_file() or path.is_symlink():
             failures.append(f"expected protected file missing: {relative_path}")
             continue
+        if path.stat().st_mode & 0o111:
+            failures.append(
+                f"protected files must not be executable: {relative_path}"
+            )
         if file_sha256(path) == expected_digest:
             continue
         if relative_path in NATIVE_SOURCE_PATHS:

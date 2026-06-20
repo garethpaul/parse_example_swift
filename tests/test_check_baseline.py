@@ -1,5 +1,7 @@
 import plistlib
+from hashlib import sha256
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -22,6 +24,32 @@ class BaselineMutationTests(unittest.TestCase):
                 ".pytest_cache",
             ),
         )
+        integrity_path = destination / "scripts" / "check-integrity.py"
+        integrity = integrity_path.read_text(encoding="utf-8")
+        for protected_path in [
+            "scripts/check-baseline.py",
+            "tests/test_check_baseline.py",
+        ]:
+            protected_digest = sha256(
+                (destination / protected_path).read_bytes()
+            ).hexdigest()
+            integrity, replacements = re.subn(
+                rf'("{re.escape(protected_path)}": ")[0-9a-f]{{64}}("[,])',
+                rf"\g<1>{protected_digest}\g<2>",
+                integrity,
+            )
+            self.assertEqual(replacements, 1)
+        integrity_path.write_text(integrity, encoding="utf-8")
+        workflow_path = destination / ".github" / "workflows" / "check.yml"
+        workflow = workflow_path.read_text(encoding="utf-8")
+        integrity_digest = sha256(integrity_path.read_bytes()).hexdigest()
+        workflow, replacements = re.subn(
+            r"(?m)^(  INTEGRITY_SHA256: )[0-9a-f]{64}$",
+            rf"\g<1>{integrity_digest}",
+            workflow,
+        )
+        self.assertEqual(replacements, 1)
+        workflow_path.write_text(workflow, encoding="utf-8")
         return destination
 
     def run_checker(self, repository):
@@ -299,6 +327,26 @@ func unreachableFileRead() {
             "unexpected native source file: parse_example/NetworkClient.swift",
         )
 
+    def test_integrity_checker_rejects_executable_protected_file(self):
+        def mutate(repository, _):
+            path = repository / "Makefile"
+            path.chmod(path.stat().st_mode | 0o111)
+
+        self.assert_integrity_mutation_rejected(
+            mutate,
+            "protected files must not be executable: Makefile",
+        )
+
+    def test_integrity_checker_rejects_crlf_rewrite(self):
+        def mutate(repository, _):
+            path = repository / "parse_example" / "ViewController.swift"
+            path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+
+        self.assert_integrity_mutation_rejected(
+            mutate,
+            "native source integrity mismatch: parse_example/ViewController.swift",
+        )
+
     def test_integrity_checker_rejects_policy_tool_laundering(self):
         def mutate(repository, _):
             (repository / "scripts" / "check-baseline.py").write_text(
@@ -353,6 +401,29 @@ func unreachableFileRead() {
         self.assert_integrity_mutation_rejected(
             mutate,
             "integrity workflow contract mismatch",
+        )
+
+    def test_rejects_gitlink_hidden_from_working_tree_inventory(self):
+        def mutate(repository, _):
+            subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
+            subprocess.run(["git", "add", "."], cwd=repository, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "update-index",
+                    "--add",
+                    "--info-only",
+                    "--cacheinfo",
+                    "160000,1111111111111111111111111111111111111111,vendor/HiddenSDK",
+                ],
+                cwd=repository,
+                check=True,
+            )
+
+        self.assert_mutation_rejected(
+            mutate,
+            "tracked repository entries must be regular non-executable files: "
+            "160000 vendor/HiddenSDK",
         )
 
     def test_rejects_oversized_repository_file(self):

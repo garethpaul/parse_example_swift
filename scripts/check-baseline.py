@@ -5,6 +5,7 @@ from pathlib import Path
 import json
 import plistlib
 import re
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
@@ -236,6 +237,42 @@ def main():
         failures.append(f"unexpected repository file: {path}")
     for path in sorted(EXPECTED_REPOSITORY_FILES - repository_files):
         failures.append(f"expected repository file missing: {path}")
+
+    git_metadata = ROOT / ".git"
+    if git_metadata.exists():
+        tracked = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files", "--stage", "-z"],
+            capture_output=True,
+            check=False,
+        )
+        if tracked.returncode != 0:
+            failures.append("unable to inspect tracked repository entry types")
+        else:
+            tracked_paths = set()
+            for record in tracked.stdout.split(b"\0"):
+                if not record:
+                    continue
+                metadata, separator, raw_path = record.partition(b"\t")
+                fields = metadata.split()
+                if not separator or len(fields) != 3:
+                    failures.append("malformed tracked repository entry metadata")
+                    continue
+                mode, _, stage = fields
+                try:
+                    tracked_path = raw_path.decode("utf-8")
+                except UnicodeDecodeError:
+                    failures.append("tracked repository paths must be UTF-8")
+                    continue
+                tracked_paths.add(tracked_path)
+                if mode != b"100644" or stage != b"0":
+                    failures.append(
+                        "tracked repository entries must be regular "
+                        f"non-executable files: {mode.decode()} {tracked_path}"
+                    )
+            for path in sorted(tracked_paths - EXPECTED_REPOSITORY_FILES):
+                failures.append(f"unexpected tracked repository entry: {path}")
+            for path in sorted(EXPECTED_REPOSITORY_FILES - tracked_paths):
+                failures.append(f"expected tracked repository entry missing: {path}")
 
     for path in REQUIRED:
         if not (ROOT / path).is_file():
@@ -581,6 +618,11 @@ def main():
         "iOS 8",
         "compatibility inventory",
         "absolute Makefile path works from another directory",
+        "repository-local tamper evidence",
+        "not external attestation",
+        "100644",
+        "Gitlinks/submodules",
+        "Updating the frozen baseline",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")

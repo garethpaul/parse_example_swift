@@ -113,6 +113,32 @@ bootstrap before running the same `make check` contract on Python 3.12. It does
 not claim that this Swift 1-era iOS 8 project builds or that XCTest runs on
 current Xcode.
 
+The integrity gate hashes canonical file bytes, so line-ending rewrites change
+the digest. On Git checkouts it also requires every tracked entry to be a
+regular, non-executable `100644` file, rejecting executable-bit changes,
+symlinks, Gitlinks/submodules, unmerged index stages, hidden tracked paths, and
+unexpected tracked files. Exported source archives without `.git` still receive
+the closed working-tree inventory, symlink, UTF-8, size, and byte-digest checks,
+but cannot prove Git index modes or entry types.
+
+### Updating the frozen baseline
+
+Treat any baseline update as a review boundary, not routine hash regeneration:
+
+1. Review the intended source/project/policy diff and update the corresponding
+   entry in `PROTECTED_FILE_SHA256` in `scripts/check-integrity.py`.
+2. If the baseline checker or mutation suite changes, update their protected
+   digests only after the final code and tests are fixed.
+3. Recompute `INTEGRITY_SHA256` from the final bytes of
+   `scripts/check-integrity.py` and update `.github/workflows/check.yml` last.
+4. Run `make check`, the hostile mode/type/path/line-ending mutations,
+   `git diff --check`, the changed-tree secret scan, and hosted checks.
+
+This is repository-local tamper evidence. A single reviewed change can rewrite
+the bootstrap, workflow digest, and protected hashes together, so it does not
+provide external attestation or make maintainer review unnecessary. It is
+designed to reject isolated drift and partial validation laundering.
+
 Hosted checkout credentials are not persisted, and the baseline enforces the
 complete workflow contract so extra actions, events, permissions, or shadowed
 YAML settings cannot silently weaken validation.

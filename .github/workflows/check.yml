@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 env:
-  INTEGRITY_SHA256: 7d848bcbac6994e139872e2d63be0a6a050558733a248a7545e6c357ebee4f75
+  INTEGRITY_SHA256: b6db2e3c0c73f9d92f5baf510484aaabfe0a87b28348809f5a5f96ddf96e0f64
 concurrency:
   group: check-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

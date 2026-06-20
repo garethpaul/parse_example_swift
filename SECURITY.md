@@ -50,6 +50,13 @@ Helpful reports include:
   bytes plus Make, policy-checker, and hostile-test files. Assembled endpoints,
   alternate network or path APIs, dead code, comments, source renames/additions,
   and isolated validation-file laundering therefore fail closed.
+- Git checkouts require regular, non-executable `100644` tracked entries, so
+  executable-bit changes, symlinks, Gitlinks/submodules, unmerged stages, hidden
+  tracked paths, and unexpected tracked files fail closed. Exported archives
+  cannot prove Git index modes or entry types.
+- The hashes are repository-local tamper evidence, not external attestation. A
+  coordinated same-change rewrite of the bootstrap, workflow digest, and hash
+  inventory remains a maintainer review boundary.
 - Hosted checkout uses `persist-credentials: false`, and the static baseline
   enforces the normalized workflow contract to reject extra actions or shadowed
   security settings.

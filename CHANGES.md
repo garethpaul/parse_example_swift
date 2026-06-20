@@ -9,6 +9,10 @@
 - Added a workflow-pinned integrity bootstrap that protects Make policy, the
   structural checker, and hostile tests from isolated laundering, with
   executable mutations for each trust-chain layer.
+- Rejected executable tracked files, Gitlinks/submodules, unmerged index stages,
+  hidden tracked paths, and unexpected tracked entries; documented canonical
+  byte/line-ending behavior, the deliberate hash-update order, archive limits,
+  and the repository-local rather than externally attested trust boundary.
 - Added executable hostile mutation coverage and an exact bounded repository
   inventory that rejects symlinks, unexpected implementation/configuration,
   signing artifacts, ATS exceptions, runtime endpoints, and oversized files.
