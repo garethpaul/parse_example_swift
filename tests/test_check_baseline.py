@@ -1,5 +1,7 @@
 import plistlib
+from hashlib import sha256
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -22,11 +24,66 @@ class BaselineMutationTests(unittest.TestCase):
                 ".pytest_cache",
             ),
         )
+        integrity_path = destination / "scripts" / "check-integrity.py"
+        integrity = integrity_path.read_text(encoding="utf-8")
+        for protected_path in [
+            "scripts/check-baseline.py",
+            "tests/test_check_baseline.py",
+        ]:
+            protected_digest = sha256(
+                (destination / protected_path).read_bytes()
+            ).hexdigest()
+            integrity, replacements = re.subn(
+                rf'("{re.escape(protected_path)}": ")[0-9a-f]{{64}}("[,])',
+                rf"\g<1>{protected_digest}\g<2>",
+                integrity,
+            )
+            self.assertEqual(replacements, 1)
+        integrity_path.write_text(integrity, encoding="utf-8")
+        workflow_path = destination / ".github" / "workflows" / "check.yml"
+        workflow = workflow_path.read_text(encoding="utf-8")
+        integrity_digest = sha256(integrity_path.read_bytes()).hexdigest()
+        workflow, replacements = re.subn(
+            r"(?m)^(  INTEGRITY_SHA256: )[0-9a-f]{64}$",
+            rf"\g<1>{integrity_digest}",
+            workflow,
+        )
+        self.assertEqual(replacements, 1)
+        workflow_path.write_text(workflow, encoding="utf-8")
         return destination
 
     def run_checker(self, repository):
-        return subprocess.run(
+        integrity_result = self.run_integrity_checker(repository)
+        baseline_result = subprocess.run(
             ["python3", "scripts/check-baseline.py"],
+            cwd=repository,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        return subprocess.CompletedProcess(
+            args=["integrity-and-baseline"],
+            returncode=int(
+                integrity_result.returncode != 0 or baseline_result.returncode != 0
+            ),
+            stdout=integrity_result.stdout + baseline_result.stdout,
+            stderr=integrity_result.stderr + baseline_result.stderr,
+        )
+
+    def run_integrity_checker(self, repository):
+        return subprocess.run(
+            ["python3", "scripts/check-integrity.py"],
+            cwd=repository,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+
+    def run_integrity_gate(self, repository):
+        return subprocess.run(
+            ["make", "static-check"],
             cwd=repository,
             capture_output=True,
             text=True,
@@ -39,6 +96,22 @@ class BaselineMutationTests(unittest.TestCase):
             repository = self.copy_repository(temporary_directory)
             mutate(repository, Path(temporary_directory))
             result = self.run_checker(repository)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn(expected_diagnostic, result.stderr)
+
+    def assert_integrity_mutation_rejected(self, mutate, expected_diagnostic):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository = self.copy_repository(temporary_directory)
+            mutate(repository, Path(temporary_directory))
+            result = self.run_integrity_checker(repository)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn(expected_diagnostic, result.stderr)
+
+    def assert_gate_mutation_rejected(self, mutate, expected_diagnostic):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository = self.copy_repository(temporary_directory)
+            mutate(repository, Path(temporary_directory))
+            result = self.run_integrity_gate(repository)
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn(expected_diagnostic, result.stderr)
 
@@ -174,6 +247,183 @@ class BaselineMutationTests(unittest.TestCase):
         self.assert_mutation_rejected(
             mutate,
             "structural scaffold must not contain unreviewed network or Parse runtime code: URLSession",
+        )
+
+    def test_rejects_assembled_https_data_contents_of_bypass(self):
+        def mutate(repository, _):
+            path = repository / "parse_example" / "ViewController.swift"
+            path.write_text(
+                path.read_text(encoding="utf-8")
+                + """
+
+func loadRemotePayload() throws -> Data {
+    let scheme = ["ht", "tps"].joined()
+    let endpoint = URL(string: scheme + "://example.invalid/payload")!
+    return try Data(contentsOf: endpoint)
+}
+""",
+                encoding="utf-8",
+            )
+
+        self.assert_mutation_rejected(
+            mutate,
+            "native source integrity mismatch: parse_example/ViewController.swift",
+        )
+
+    def test_rejects_network_code_hidden_in_dead_code_and_comments(self):
+        def mutate(repository, _):
+            path = repository / "parse_example" / "ViewController.swift"
+            path.write_text(
+                path.read_text(encoding="utf-8")
+                + """
+
+// Data(contentsOf: URL(string: assembledScheme)!)
+func unreachableFileRead() {
+    if false {
+        let path = ["/tmp", "/payload"].joined()
+        _ = NSData(contentsOfFile: path)
+    }
+}
+""",
+                encoding="utf-8",
+            )
+
+        self.assert_mutation_rejected(
+            mutate,
+            "native source integrity mismatch: parse_example/ViewController.swift",
+        )
+
+    def test_rejects_native_source_rename(self):
+        def mutate(repository, _):
+            source = repository / "parse_example" / "ViewController.swift"
+            source.rename(repository / "parse_example" / "HomeViewController.swift")
+
+        self.assert_mutation_rejected(
+            mutate,
+            "expected protected file missing: parse_example/ViewController.swift",
+        )
+
+    def test_integrity_checker_rejects_makefile_laundering(self):
+        def mutate(repository, _):
+            (repository / "Makefile").write_text(
+                ".PHONY: check\ncheck:\n\t@true\n",
+                encoding="utf-8",
+            )
+
+        self.assert_integrity_mutation_rejected(
+            mutate,
+            "integrity mismatch: Makefile",
+        )
+
+    def test_integrity_checker_rejects_native_source_addition(self):
+        def mutate(repository, _):
+            (repository / "parse_example" / "NetworkClient.swift").write_text(
+                "import Foundation\n",
+                encoding="utf-8",
+            )
+
+        self.assert_integrity_mutation_rejected(
+            mutate,
+            "unexpected native source file: parse_example/NetworkClient.swift",
+        )
+
+    def test_integrity_checker_rejects_executable_protected_file(self):
+        def mutate(repository, _):
+            path = repository / "Makefile"
+            path.chmod(path.stat().st_mode | 0o111)
+
+        self.assert_integrity_mutation_rejected(
+            mutate,
+            "protected files must not be executable: Makefile",
+        )
+
+    def test_integrity_checker_rejects_crlf_rewrite(self):
+        def mutate(repository, _):
+            path = repository / "parse_example" / "ViewController.swift"
+            path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+
+        self.assert_integrity_mutation_rejected(
+            mutate,
+            "native source integrity mismatch: parse_example/ViewController.swift",
+        )
+
+    def test_integrity_checker_rejects_policy_tool_laundering(self):
+        def mutate(repository, _):
+            (repository / "scripts" / "check-baseline.py").write_text(
+                "print('baseline checks passed')\n",
+                encoding="utf-8",
+            )
+
+        self.assert_integrity_mutation_rejected(
+            mutate,
+            "integrity mismatch: scripts/check-baseline.py",
+        )
+
+    def test_integrity_checker_rejects_test_laundering(self):
+        def mutate(repository, _):
+            path = repository / "tests" / "test_check_baseline.py"
+            path.write_text(
+                path.read_text(encoding="utf-8").replace(
+                    "self.assertNotEqual(result.returncode, 0, result.stdout)",
+                    "self.assertEqual(result.returncode, 0, result.stderr)",
+                ),
+                encoding="utf-8",
+            )
+
+        self.assert_integrity_mutation_rejected(
+            mutate,
+            "integrity mismatch: tests/test_check_baseline.py",
+        )
+
+    def test_integrity_gate_rejects_bootstrap_laundering(self):
+        def mutate(repository, _):
+            (repository / "scripts" / "check-integrity.py").write_text(
+                "print('integrity checks passed')\n",
+                encoding="utf-8",
+            )
+
+        self.assert_gate_mutation_rejected(
+            mutate,
+            "integrity bootstrap digest mismatch",
+        )
+
+    def test_integrity_checker_rejects_workflow_laundering(self):
+        def mutate(repository, _):
+            path = repository / ".github" / "workflows" / "check.yml"
+            path.write_text(
+                path.read_text(encoding="utf-8").replace(
+                    "make check",
+                    "true",
+                ),
+                encoding="utf-8",
+            )
+
+        self.assert_integrity_mutation_rejected(
+            mutate,
+            "integrity workflow contract mismatch",
+        )
+
+    def test_rejects_gitlink_hidden_from_working_tree_inventory(self):
+        def mutate(repository, _):
+            subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
+            subprocess.run(["git", "add", "."], cwd=repository, check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "update-index",
+                    "--add",
+                    "--info-only",
+                    "--cacheinfo",
+                    "160000,1111111111111111111111111111111111111111,vendor/HiddenSDK",
+                ],
+                cwd=repository,
+                check=True,
+            )
+
+        self.assert_mutation_rejected(
+            mutate,
+            "tracked repository entries must be regular non-executable files: "
+            "160000 vendor/HiddenSDK",
         )
 
     def test_rejects_oversized_repository_file(self):

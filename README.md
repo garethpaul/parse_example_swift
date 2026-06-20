@@ -32,6 +32,7 @@ This README is based on the checked-in source, manifests, scripts, and repositor
 - `Makefile` - local static verification entry point
 - `CHANGES.md` - baseline change log
 - `docs/plans/2026-06-08-parse-swift-baseline.md` - completed baseline plan
+- `scripts/check-integrity.py` - SHA-256 trust-chain and frozen-source checks
 - `scripts/check-baseline.py` - static baseline checks used by `make check`
 - `tests/test_check_baseline.py` - hostile mutation coverage for structural policy
 - `SECURITY.md` - security reporting and disclosure guidance
@@ -95,16 +96,48 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 - `make test`
 - `make build`
 - `make verify`
+- `python3 scripts/check-integrity.py`
 - `python3 scripts/check-baseline.py`
 - Xcode's test action or `xcodebuild test` with the appropriate scheme and destination when Xcode is available
 
-`make check` combines the checked-in static baseline with hostile mutation tests
-for unexpected files, symlinks, provisioning artifacts, Parse configuration,
-runtime endpoints, ATS exceptions, and size limits. The remaining Make aliases
-stay usable on machines without Xcode.
-Pinned hosted macOS structural validation runs the same `make check` contract
-on Python 3.12. It does not claim that this Swift 1-era iOS 8 project builds or
-that XCTest runs on current Xcode.
+`make check` first verifies the workflow-pinned integrity bootstrap, then checks
+SHA-256 digests for the exact native source, Xcode project inputs, Make policy,
+baseline checker, and hostile tests before running the static baseline and
+mutation suite. This freezes the intended legacy scaffold: alternate network or
+path APIs, assembled strings, comments or dead code, source renames or additions,
+and isolated Make/checker/test laundering all fail closed. The remaining Make
+aliases stay usable on machines without Xcode.
+
+Pinned hosted macOS structural validation independently verifies the integrity
+bootstrap before running the same `make check` contract on Python 3.12. It does
+not claim that this Swift 1-era iOS 8 project builds or that XCTest runs on
+current Xcode.
+
+The integrity gate hashes canonical file bytes, so line-ending rewrites change
+the digest. On Git checkouts it also requires every tracked entry to be a
+regular, non-executable `100644` file, rejecting executable-bit changes,
+symlinks, Gitlinks/submodules, unmerged index stages, hidden tracked paths, and
+unexpected tracked files. Exported source archives without `.git` still receive
+the closed working-tree inventory, symlink, UTF-8, size, and byte-digest checks,
+but cannot prove Git index modes or entry types.
+
+### Updating the frozen baseline
+
+Treat any baseline update as a review boundary, not routine hash regeneration:
+
+1. Review the intended source/project/policy diff and update the corresponding
+   entry in `PROTECTED_FILE_SHA256` in `scripts/check-integrity.py`.
+2. If the baseline checker or mutation suite changes, update their protected
+   digests only after the final code and tests are fixed.
+3. Recompute `INTEGRITY_SHA256` from the final bytes of
+   `scripts/check-integrity.py` and update `.github/workflows/check.yml` last.
+4. Run `make check`, the hostile mode/type/path/line-ending mutations,
+   `git diff --check`, the changed-tree secret scan, and hosted checks.
+
+This is repository-local tamper evidence. A single reviewed change can rewrite
+the bootstrap, workflow digest, and protected hashes together, so it does not
+provide external attestation or make maintainer review unnecessary. It is
+designed to reject isolated drift and partial validation laundering.
 
 Hosted checkout credentials are not persisted, and the baseline enforces the
 complete workflow contract so extra actions, events, permissions, or shadowed

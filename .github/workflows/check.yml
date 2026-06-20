@@ -5,6 +5,8 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  INTEGRITY_SHA256: b6db2e3c0c73f9d92f5baf510484aaabfe0a87b28348809f5a5f96ddf96e0f64
 concurrency:
   group: check-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -19,4 +21,9 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
         with:
           python-version: "3.12"
+      - name: Verify integrity bootstrap
+        run: |
+          actual="$(python3 -c 'import hashlib; print(hashlib.sha256(open("scripts/check-integrity.py", "rb").read()).hexdigest())')"
+          test "$actual" = "$INTEGRITY_SHA256" || { echo "integrity bootstrap digest mismatch" >&2; exit 1; }
+          python3 scripts/check-integrity.py
       - run: make check
