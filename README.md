@@ -10,6 +10,18 @@
 This is a legacy Swift/Xcode scaffold. It does not currently include the Parse
 SDK, Parse credentials, or an implemented backend login/data flow.
 
+The intended first integration is a signed-in user's private-note flow with
+owner-scoped reads and writes, fake-backed application tests, and no privileged
+client capability. See
+[`docs/intended-parse-scenario.md`](docs/intended-parse-scenario.md) for the
+data, authorization, state, compatibility, and non-goal contract.
+
+The checked-in Xcode 6-era, iOS 8, legacy Swift metadata and absent dependency
+declarations are inventoried in
+[`docs/legacy-toolchain-compatibility.md`](docs/legacy-toolchain-compatibility.md).
+Structural validation is not a current-Xcode build or Parse SDK compatibility
+claim.
+
 This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: Swift (3), C/C++ headers (1).
 
 ## Repository Contents
@@ -21,8 +33,10 @@ This README is based on the checked-in source, manifests, scripts, and repositor
 - `CHANGES.md` - baseline change log
 - `docs/plans/2026-06-08-parse-swift-baseline.md` - completed baseline plan
 - `scripts/check-baseline.py` - static baseline checks used by `make check`
+- `tests/test_check_baseline.py` - hostile mutation coverage for structural policy
 - `SECURITY.md` - security reporting and disclosure guidance
 - `VISION.md` - project direction and maintenance guardrails
+- `docs/intended-parse-scenario.md` - future Parse flow and safety contract
 
 Additional scan context:
 
@@ -70,6 +84,9 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   app and XCTest Swift files cannot silently move between targets.
 - Asset catalog metadata for `AppIcon` and `LaunchImage` stays parseable and
   aligned with the Xcode project compiler settings.
+- Any future Parse implementation must preserve the documented private-note
+  ownership boundary and deterministic fake-first test seam before service
+  calls are added.
 
 ## Testing and Verification
 
@@ -81,11 +98,25 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 - `python3 scripts/check-baseline.py`
 - Xcode's test action or `xcodebuild test` with the appropriate scheme and destination when Xcode is available
 
-The Make aliases use the checked-in static baseline so local verification still
-works on machines without Xcode.
+`make check` combines the checked-in static baseline with hostile mutation tests
+for unexpected files, symlinks, provisioning artifacts, Parse configuration,
+runtime endpoints, ATS exceptions, and size limits. The remaining Make aliases
+stay usable on machines without Xcode.
 Pinned hosted macOS structural validation runs the same `make check` contract
 on Python 3.12. It does not claim that this Swift 1-era iOS 8 project builds or
 that XCTest runs on current Xcode.
+
+Hosted checkout credentials are not persisted, and the baseline enforces the
+complete workflow contract so extra actions, events, permissions, or shadowed
+YAML settings cannot silently weaken validation.
+
+Credential-free signing metadata is also enforced: the Xcode project must not
+contain a development team, provisioning profile, entitlements path, or
+account-specific signing identity.
+
+The structural repository inventory is exact and bounded. Required files must
+be regular files smaller than 1 MiB, and unreviewed source, configuration,
+framework, signing, or generated artifacts fail validation.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -102,6 +133,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 ## Maintenance Notes
 
+- Standard Make aliases resolve the structural checker from `Makefile`, so an
+  absolute Makefile path works from another directory without changing scope.
 - This looks like an Apple platform project or sample. Xcode, Swift, CocoaPods, and deployment target versions may need to match the original project era.
 - Keep non-placeholder XCTest coverage in place before adding Parse SDK calls or
   service-backed flows.

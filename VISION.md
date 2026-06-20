@@ -36,6 +36,9 @@ Priority:
 - Keep plist executable and product-name tokens explicit for the app and XCTest
   target
 - Keep the no-Xcode structural validation gate running on pinned hosted macOS
+- Keep hosted checkout credential-free and reject workflow drift structurally
+- Keep credential-free signing metadata free of Apple account, provisioning,
+  entitlements, and certificate-specific values
 - Keep the storyboard initial view controller bound to the checked-in
   `ViewController` class
 - Keep the main storyboard plist entry aligned with the checked-in `Main`
@@ -45,11 +48,15 @@ Priority:
 - Keep asset catalog metadata aligned with app icon and launch image settings
 - Keep `make lint`, `make test`, `make build`, `make verify`, and `make check`
   available as no-Xcode local verification gates
+- Keep the intended Parse scenario limited to authenticated owner-scoped
+  private notes behind a deterministic fake-first application boundary
+- Keep the Xcode 6-era iOS 8 compatibility inventory explicit until a selected
+  Swift, Xcode, deployment-target, and Parse SDK configuration builds and tests
 
 Next priorities:
 
-- Add a README that explains the intended Parse scenario
-- Identify the required Parse SDK version and installation path
+- Select and prove an exact Parse SDK version and installation path in a
+  dedicated compatibility decision
 - Add tests around any future Parse-backed behavior before service calls
 - Add a small model or login example only with testable behavior
 - Update the Swift syntax in a dedicated modernization pass
@@ -77,6 +84,7 @@ for examples and tests.
 - Broad UI work before the sample scenario is defined
 - SDK migrations without setup notes
 - Untested service calls
+- Public, cross-user, or admin-capable behavior in the initial note scenario
 
 This list is a roadmap guardrail, not a permanent rule.
 Strong user demand and strong technical rationale can change it.

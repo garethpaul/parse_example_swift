@@ -1,5 +1,40 @@
 # Changes
 
+## 2026-06-19
+
+- Added executable hostile mutation coverage and an exact bounded repository
+  inventory that rejects symlinks, unexpected implementation/configuration,
+  signing artifacts, ATS exceptions, runtime endpoints, and oversized files.
+- Updated the immutable checkout pin to the official `actions/checkout` v7.0.0
+  release while retaining read-only permissions and disabled credential
+  persistence.
+- Recorded that Xcode 26.0.1 can enumerate the legacy targets but cannot build
+  the project because its absent Swift language version is unsupported.
+
+## 2026-06-14
+
+- Made every standard Make alias resolve the structural checker from the
+  repository root, including external absolute-Makefile calls.
+
+## 2026-06-13
+
+- Recorded the exact Xcode 6-era, iOS 8, legacy Swift, and absent dependency
+  metadata that must precede any modern toolchain or Parse SDK compatibility
+  claim.
+- Defined the intended credential-free Parse scenario: authenticated private
+  notes, owner-scoped reads and writes, explicit UI outcomes, a deterministic
+  fake-first application boundary, and separate SDK compatibility work.
+- Added a structural guard for credential-free signing metadata that rejects
+  Apple development teams, provisioning profiles, entitlements paths, and
+  account-specific signing identities in the Xcode project.
+
+## 2026-06-12
+
+- Disabled persisted checkout credentials in hosted macOS validation and made
+  the baseline enforce the exact pinned workflow contract.
+- Added contributor-safety checks and rejected duplicate or unexpected Xcode
+  native targets in source membership validation.
+
 ## 2026-06-09
 
 - Added stable `make lint`, `make test`, `make build`, and `make verify`

@@ -14,8 +14,14 @@ PLAN = "docs/plans/2026-06-08-parse-swift-baseline.md"
 STORYBOARD_PLAN = "docs/plans/2026-06-09-storyboard-initial-view-controller.md"
 HOSTED_VALIDATION_PLAN = "docs/plans/2026-06-10-hosted-structural-validation.md"
 SOURCE_MEMBERSHIP_PLAN = "docs/plans/2026-06-10-source-target-membership.md"
+CREDENTIAL_FREE_PLAN = "docs/plans/2026-06-12-credential-free-hosted-validation.md"
+SIGNING_METADATA_PLAN = "docs/plans/2026-06-13-credential-free-signing-metadata.md"
+SCENARIO_PLAN = "docs/plans/2026-06-13-intended-parse-scenario.md"
+COMPATIBILITY_PLAN = "docs/plans/2026-06-13-legacy-toolchain-compatibility-inventory.md"
+LOCATION_INDEPENDENT_MAKE_PLAN = "docs/plans/2026-06-14-location-independent-make-gates.md"
 REQUIRED = [
     ".github/workflows/check.yml",
+    "AGENTS.md",
     ".gitignore",
     "CHANGES.md",
     "Makefile",
@@ -24,6 +30,8 @@ REQUIRED = [
     "VISION.md",
     "Swift.h",
     "docs/readme-overview.svg",
+    "docs/intended-parse-scenario.md",
+    "docs/legacy-toolchain-compatibility.md",
     PLAN,
     "docs/plans/2026-06-09-non-placeholder-xctest.md",
     "docs/plans/2026-06-09-non-empty-bundle-identifier.md",
@@ -36,6 +44,12 @@ REQUIRED = [
     "docs/plans/2026-06-10-plist-executable-name-tokens.md",
     HOSTED_VALIDATION_PLAN,
     SOURCE_MEMBERSHIP_PLAN,
+    CREDENTIAL_FREE_PLAN,
+    SIGNING_METADATA_PLAN,
+    SCENARIO_PLAN,
+    COMPATIBILITY_PLAN,
+    LOCATION_INDEPENDENT_MAKE_PLAN,
+    "docs/plans/2026-06-19-deep-review-hardening.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -46,11 +60,49 @@ REQUIRED = [
     "parse_exampleTests/Info.plist",
     "parse_exampleTests/parse_exampleTests.swift",
     "scripts/check-baseline.py",
+    "tests/test_check_baseline.py",
 ]
+EXPECTED_REPOSITORY_FILES = set(REQUIRED) | {
+    "parse_example.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+}
+IGNORED_PATH_PARTS = {".git"}
+MAX_REPOSITORY_FILE_BYTES = 1_048_576
+
+EXPECTED_WORKFLOW = """name: Check
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  structural:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version: "3.12"
+      - run: make check
+"""
 
 
 def read(path):
     return (ROOT / path).read_text(encoding="utf-8", errors="replace")
+
+
+def markdown_section(text, heading):
+    match = re.search(
+        rf"(?ms)^## {re.escape(heading)}\s*$\n(.*?)(?=^## |\Z)",
+        text,
+    )
+    return match.group(1).strip() if match else ""
 
 
 def has_image(images, **expected):
@@ -119,6 +171,7 @@ def target_source_paths(project):
     }
 
     targets = {}
+    duplicate_target_names = set()
     for body in native_targets.values():
         target_name = pbx_field(body, "name")
         source_phase_ids = [
@@ -129,40 +182,88 @@ def target_source_paths(project):
         target_paths = set()
         for phase_id in source_phase_ids:
             target_paths.update(phase_paths[phase_id])
+        if target_name in targets:
+            duplicate_target_names.add(target_name)
         targets[target_name] = target_paths
-    return targets
+    return targets, duplicate_target_names
 
 
 def main():
     failures = []
+    repository_files = set()
+    for path in ROOT.rglob("*"):
+        relative = path.relative_to(ROOT)
+        if any(part in IGNORED_PATH_PARTS for part in relative.parts):
+            continue
+        relative_path = relative.as_posix()
+        if path.is_symlink():
+            failures.append(
+                f"repository files must not be symlinks: {relative_path}"
+            )
+            repository_files.add(relative_path)
+            continue
+        if not path.is_file():
+            continue
+        repository_files.add(relative_path)
+        if path.stat().st_size > MAX_REPOSITORY_FILE_BYTES:
+            failures.append(
+                "repository file exceeds "
+                f"{MAX_REPOSITORY_FILE_BYTES}-byte limit: {relative_path}"
+            )
+            continue
+        try:
+            repository_text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            failures.append(f"repository files must be UTF-8 text: {relative_path}")
+            continue
+        if re.search(
+            r"-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY-----",
+            repository_text,
+        ):
+            failures.append(
+                f"repository must not contain private-key material: {relative_path}"
+            )
+
+    for path in sorted(repository_files - EXPECTED_REPOSITORY_FILES):
+        failures.append(f"unexpected repository file: {path}")
+    for path in sorted(EXPECTED_REPOSITORY_FILES - repository_files):
+        failures.append(f"expected repository file missing: {path}")
+
     for path in REQUIRED:
         if not (ROOT / path).is_file():
             failures.append(f"required file missing: {path}")
 
     makefile = read("Makefile")
     for phrase in [
-        "python3 scripts/check-baseline.py",
+        "override REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))",
+        'python3 "$(REPO_ROOT)/scripts/check-baseline.py"',
         "lint: static-check",
-        "test: static-check",
+        "test: mutation-test",
         "build: static-check",
         "verify: check",
+        "mutation-test:",
+        "python3 -m unittest discover",
     ]:
         if phrase not in makefile:
             failures.append(f"Makefile must include {phrase}")
 
     workflow = read(".github/workflows/check.yml")
-    for expected in [
-        "permissions:\n  contents: read",
-        "cancel-in-progress: true",
-        "runs-on: macos-15",
-        "timeout-minutes: 10",
-        "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10",
-        "actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405",
-        'python-version: "3.12"',
-        "run: make check",
+    if workflow != EXPECTED_WORKFLOW:
+        failures.append(
+            "Check workflow must exactly preserve the pinned, credential-free "
+            "macOS structural validation contract"
+        )
+
+    agents = read("AGENTS.md")
+    for phrase in [
+        "make check",
+        "Do not commit Parse credentials",
+        "preserve legacy Xcode project settings",
+        "non-placeholder XCTest coverage",
+        "credential-free signing metadata",
     ]:
-        if expected not in workflow:
-            failures.append(f"Check workflow must keep {expected}")
+        if phrase.lower() not in agents.lower():
+            failures.append(f"AGENTS.md must preserve the guardrail: {phrase}")
 
     gitignore = read(".gitignore")
     for phrase in ["DerivedData", "*.xcuserstate", ".env", "*.log", "tmp/"]:
@@ -199,7 +300,28 @@ def main():
     app_plist = plists.get("parse_example/Info.plist")
     if app_plist and app_plist.get("UIMainStoryboardFile") != "Main":
         failures.append("parse_example/Info.plist must launch the Main storyboard")
-
+    if app_plist and "NSAppTransportSecurity" in app_plist:
+        failures.append(
+            "parse_example/Info.plist must not define NSAppTransportSecurity exceptions"
+        )
+    forbidden_plist_keys = {
+        "parseapplicationid",
+        "parseclientkey",
+        "parsemasterkey",
+        "parseserverurl",
+        "serverurl",
+    }
+    for path, plist in plists.items():
+        present_forbidden_keys = sorted(
+            str(key)
+            for key in plist
+            if re.sub(r"[^a-z0-9]", "", str(key).lower()) in forbidden_plist_keys
+        )
+        if present_forbidden_keys:
+            failures.append(
+                f"{path} must not contain Parse credential or endpoint keys: "
+                + ", ".join(present_forbidden_keys)
+            )
     asset_catalogs = {}
     for path in [
         "parse_example/Images.xcassets/AppIcon.appiconset/Contents.json",
@@ -255,6 +377,37 @@ def main():
                     failures.append("Main.storyboard ViewController must use the target module provider")
 
     pbxproj = read("parse_example.xcodeproj/project.pbxproj")
+    signing_settings = []
+    for line in pbxproj.splitlines():
+        match = re.match(
+            r'^\s*"?([A-Z][A-Z0-9_]*)(?:\[[^]]+\])?"?\s*=\s*(.*?);\s*$',
+            line,
+        )
+        if match:
+            signing_settings.append(match.groups())
+
+    forbidden_signing_settings = {
+        "CODE_SIGN_ENTITLEMENTS",
+        "DEVELOPMENT_TEAM",
+        "PROVISIONING_PROFILE",
+        "PROVISIONING_PROFILE_SPECIFIER",
+    }
+    present_forbidden_settings = sorted(
+        name for name, _ in signing_settings if name in forbidden_signing_settings
+    )
+    if present_forbidden_settings:
+        failures.append(
+            "Xcode project must not contain account-specific signing settings: "
+            + ", ".join(present_forbidden_settings)
+        )
+    signing_identities = [
+        value for name, value in signing_settings if name == "CODE_SIGN_IDENTITY"
+    ]
+    if signing_identities != ['"iPhone Developer"', '"iPhone Developer"']:
+        failures.append(
+            "Xcode project must retain only the two historical generic "
+            "iPhone Developer signing identities"
+        )
     for phrase in [
         "parse_example",
         "parse_exampleTests",
@@ -267,11 +420,34 @@ def main():
             failures.append(f"project.pbxproj must reference {phrase}")
     if pbxproj.count("defaultConfigurationName = Release;") < 3:
         failures.append("project.pbxproj must keep Release as the default configuration for project and native targets")
+    for phrase in [
+        "objectVersion = 46;",
+        "LastUpgradeCheck = 0600;",
+        'compatibilityVersion = "Xcode 3.2";',
+    ]:
+        if phrase not in pbxproj:
+            failures.append(f"project.pbxproj compatibility inventory must keep {phrase}")
+    if pbxproj.count("IPHONEOS_DEPLOYMENT_TARGET = 8.0;") != 2:
+        failures.append(
+            "project.pbxproj must keep exactly two inventoried iOS 8.0 deployment settings"
+        )
+    if "SWIFT_VERSION" in pbxproj:
+        failures.append("legacy project must not gain an unreviewed SWIFT_VERSION setting")
     expected_target_sources = {
         "parse_example": {"AppDelegate.swift", "ViewController.swift"},
         "parse_exampleTests": {"parse_exampleTests.swift"},
     }
-    actual_target_sources = target_source_paths(pbxproj)
+    actual_target_sources, duplicate_target_names = target_source_paths(pbxproj)
+    if duplicate_target_names:
+        failures.append(
+            "project.pbxproj must not define duplicate native target names: "
+            f"{sorted(duplicate_target_names)}"
+        )
+    if set(actual_target_sources) != set(expected_target_sources):
+        failures.append(
+            "project.pbxproj must define exactly the expected native targets; "
+            f"found {sorted(name for name in actual_target_sources if name)}"
+        )
     for target_name, expected_sources in expected_target_sources.items():
         actual_sources = actual_target_sources.get(target_name)
         if actual_sources != expected_sources:
@@ -283,8 +459,32 @@ def main():
     app_delegate = read("parse_example/AppDelegate.swift")
     view_controller = read("parse_example/ViewController.swift")
     tests = read("parse_exampleTests/parse_exampleTests.swift")
+    native_source = "\n".join([app_delegate, view_controller, tests])
+    if re.search(r"(?i)\bhttps?://", native_source):
+        failures.append("native source must not contain runtime network endpoints")
+    for marker in [
+        "URLSession",
+        "URLRequest",
+        "NSURLSession",
+        "NSURLConnection",
+        "CFNetwork",
+        "NWConnection",
+        "PFObject",
+        "PFQuery",
+        "PFUser",
+    ]:
+        if marker in native_source:
+            failures.append(
+                f"structural scaffold must not contain unreviewed network or Parse runtime code: {marker}"
+            )
     if "UIApplicationDelegate" not in app_delegate:
         failures.append("AppDelegate.swift must define the app delegate")
+    for phrase in [
+        "@UIApplicationMain",
+        "application(application: UIApplication, didFinishLaunchingWithOptions",
+    ]:
+        if phrase not in app_delegate:
+            failures.append(f"legacy Swift compatibility inventory must keep {phrase}")
     if "UIViewController" not in view_controller:
         failures.append("ViewController.swift must define the view controller")
     if "XCTestCase" not in tests:
@@ -307,6 +507,7 @@ def main():
         "README.md",
         "SECURITY.md",
         "VISION.md",
+        "docs/intended-parse-scenario.md",
     ])
     for forbidden in [
         "Parse.setApplicationId",
@@ -317,6 +518,25 @@ def main():
     ]:
         if forbidden in source_text:
             failures.append(f"repository must not include live Parse credential or login snippet: {forbidden}")
+
+    dependency_markers = [
+        "Package.swift",
+        "Package.resolved",
+        "Podfile",
+        "Podfile.lock",
+        "Cartfile",
+        "Cartfile.resolved",
+    ]
+    present_dependency_markers = [
+        path for path in dependency_markers if (ROOT / path).exists()
+    ]
+    if present_dependency_markers:
+        failures.append(
+            "legacy compatibility inventory must not gain dependency metadata without review: "
+            + ", ".join(present_dependency_markers)
+        )
+    if re.search(r"(?m)^\s*import\s+Parse\w*\s*$", native_source):
+        failures.append("legacy Swift source must not gain an unreviewed Parse import")
 
     docs = "\n".join(read(path) for path in ["README.md", "SECURITY.md", "VISION.md"])
     for phrase in [
@@ -341,9 +561,31 @@ def main():
         "hosted macOS",
         "structural validation",
         "source target membership",
+        "credential-free signing metadata",
+        "owner-scoped",
+        "deterministic fake",
+        "Xcode 6-era",
+        "iOS 8",
+        "compatibility inventory",
+        "absolute Makefile path works from another directory",
     ]:
         if phrase.lower() not in docs.lower():
             failures.append(f"docs must mention {phrase}")
+
+    compatibility_claims = {
+        "README.md": "Structural validation is not a current-Xcode build or Parse SDK compatibility claim",
+        "SECURITY.md": "compatibility inventory, not proof that current Xcode or a Parse SDK builds",
+        "VISION.md": "Xcode 6-era iOS 8 compatibility inventory explicit",
+        "CHANGES.md": "must precede any modern toolchain or Parse SDK compatibility claim",
+    }
+    for path, phrase in compatibility_claims.items():
+        if phrase not in " ".join(read(path).split()):
+            failures.append(f"{path} must include {phrase}")
+    changes = " ".join(read("CHANGES.md").split())
+    if "external absolute-Makefile calls" not in changes:
+        failures.append(
+            "CHANGES.md must record external absolute-Makefile calls"
+        )
 
     plan = read(PLAN)
     if "status: completed" not in plan or "make check" not in plan:
@@ -386,6 +628,218 @@ def main():
     source_membership_plan = read(SOURCE_MEMBERSHIP_PLAN)
     if "status: completed" not in source_membership_plan or "PBXSourcesBuildPhase" not in source_membership_plan:
         failures.append("source target membership plan must record completed status and verification")
+    credential_free_plan = read(CREDENTIAL_FREE_PLAN)
+    credential_free_status = re.findall(
+        r"(?mi)^status:\s*(.+?)\s*$", credential_free_plan
+    )
+    credential_free_work = markdown_section(credential_free_plan, "Work Completed")
+    credential_free_verification = markdown_section(
+        credential_free_plan, "Verification Completed"
+    )
+    if credential_free_status != ["completed"] or not credential_free_work:
+        failures.append(
+            "credential-free hosted validation plan must record one completed status and completed work"
+        )
+    if not credential_free_verification or re.search(
+        r"(?i)\b(?:pending|todo|tbd|not run)\b", credential_free_verification
+    ):
+        failures.append(
+            "credential-free hosted validation plan must record finished verification without pending markers"
+        )
+    for evidence in [
+        "persist-credentials: false",
+        "make check",
+        "make verify",
+        "make lint",
+        "make test",
+        "make build",
+        "python3 -W error scripts/check-baseline.py",
+        "git diff --check",
+        "Twelve focused hostile mutations",
+        "27390789152",
+        "27390794889",
+        "44affc3f1806bcc1ebee102594a9396779704674",
+        "df4cb1c069e1874edd31b4311f1884172cec0e10",
+        "a309ff8b426b58ec0e2a45f0f869d46889d02405",
+        "PBXSourcesBuildPhase",
+        "AppDelegate.swift",
+        "ViewController.swift",
+        "parse_exampleTests.swift",
+    ]:
+        if evidence not in credential_free_verification:
+            failures.append(
+                f"credential-free hosted validation plan must preserve verification evidence: {evidence}"
+            )
+
+    signing_metadata_plan = read(SIGNING_METADATA_PLAN)
+    for phrase in [
+        "status: completed",
+        "make check",
+        "six hostile mutations",
+        "DEVELOPMENT_TEAM",
+        "PROVISIONING_PROFILE_SPECIFIER",
+        "CODE_SIGN_ENTITLEMENTS",
+    ]:
+        if phrase not in signing_metadata_plan:
+            failures.append(
+                f"credential-free signing metadata plan must record {phrase}"
+            )
+
+    scenario = " ".join(read("docs/intended-parse-scenario.md").split())
+    for phrase in [
+        "Review date: 2026-06-13",
+        "current repository has no Parse SDK",
+        "signed-in user managing a private note",
+        "lists only notes owned by the current user",
+        "owner-only access",
+        "query only records owned by the current user",
+        "missing user session must fail before any note query or write",
+        "signed out and authentication required",
+        "empty note list",
+        "save failure or list failure with a retry path",
+        "small application boundary",
+        "deterministic fake",
+        "Runtime-supplied configuration must stay outside version control",
+        "No master or admin key belongs in a client application",
+        "SDK version and installation path",
+        "separate compatibility decision",
+        "no public or cross-user query",
+        "no file uploads, geolocation, analytics, push notifications",
+        "No Swift or Xcode project changes",
+    ]:
+        if phrase not in scenario:
+            failures.append(f"intended Parse scenario must include {phrase}")
+
+    scenario_plan = read(SCENARIO_PLAN)
+    scenario_status = re.findall(r"(?mi)^status:\s*(.+?)\s*$", scenario_plan)
+    scenario_work = markdown_section(scenario_plan, "Work Completed")
+    scenario_verification = markdown_section(scenario_plan, "Verification Completed")
+    if scenario_status != ["completed"] or not scenario_work:
+        failures.append(
+            "intended Parse scenario plan must record one completed status and completed work"
+        )
+    if not scenario_verification or re.search(
+        r"(?i)\b(?:pending|todo|tbd|not run)\b", scenario_verification
+    ):
+        failures.append(
+            "intended Parse scenario plan must record completed verification"
+        )
+    for evidence in [
+        "make lint",
+        "make test",
+        "make build",
+        "make verify",
+        "make check",
+        "external working directory",
+        "workflow YAML",
+        "plist/storyboard XML",
+        "asset-catalog JSON",
+        "README SVG",
+        "hostile mutations rejected",
+        "implementation and project paths had no diff",
+        "git diff --check",
+        "secret, captured-identifier, and generated-artifact scan",
+    ]:
+        if evidence not in scenario_verification:
+            failures.append(
+                f"intended Parse scenario verification must record {evidence}"
+            )
+
+    compatibility = " ".join(
+        read("docs/legacy-toolchain-compatibility.md").split()
+    )
+    for phrase in [
+        "objectVersion = 46",
+        "LastUpgradeCheck = 0600",
+        'compatibilityVersion = "Xcode 3.2"',
+        "IPHONEOS_DEPLOYMENT_TARGET = 8.0",
+        "no explicit `SWIFT_VERSION`",
+        "@UIApplicationMain",
+        "no `Package.swift`",
+        "`Podfile`",
+        "`Cartfile`",
+        "no Parse import",
+        "do not invoke an Xcode build",
+        "Passing structural validation does not prove compatibility",
+        "Parse SDK version and primary-source platform support evidence",
+        "simulator build and XCTest commands",
+    ]:
+        if phrase not in compatibility:
+            failures.append(f"legacy compatibility inventory must include {phrase}")
+
+    compatibility_plan = read(COMPATIBILITY_PLAN)
+    compatibility_status = re.findall(
+        r"(?mi)^status:\s*(.+?)\s*$", compatibility_plan
+    )
+    compatibility_work = markdown_section(compatibility_plan, "Work Completed")
+    compatibility_verification = markdown_section(
+        compatibility_plan, "Verification Completed"
+    )
+    if compatibility_status != ["completed"] or not compatibility_work:
+        failures.append(
+            "legacy compatibility plan must record completed status and work"
+        )
+    if not compatibility_verification or re.search(
+        r"(?i)\b(?:pending|todo|tbd|not run)\b", compatibility_verification
+    ):
+        failures.append("legacy compatibility plan must record completed verification")
+    for evidence in [
+        "make lint",
+        "make test",
+        "make build",
+        "make verify",
+        "make check",
+        "external working directory",
+        "workflow YAML",
+        "project metadata",
+        "hostile mutations",
+        "git diff --check",
+        "secret and generated-artifact scan",
+    ]:
+        if evidence not in compatibility_verification:
+            failures.append(f"legacy compatibility verification must record {evidence}")
+
+    location_make_plan = read(LOCATION_INDEPENDENT_MAKE_PLAN)
+    location_make_status = re.findall(
+        r"(?mi)^status:\s*(.+?)\s*$", location_make_plan
+    )
+    location_make_work = markdown_section(location_make_plan, "Work Completed")
+    location_make_verification = markdown_section(
+        location_make_plan, "Verification Completed"
+    )
+    if location_make_status != ["completed"] or not location_make_work:
+        failures.append(
+            "location-independent Make plan must record one completed status "
+            "and completed work"
+        )
+    if not location_make_verification or re.search(
+        r"(?i)\b(?:pending|todo|tbd|not run)\b", location_make_verification
+    ):
+        failures.append(
+            "location-independent Make plan must record completed verification"
+        )
+    for evidence in [
+        "make lint",
+        "make test",
+        "make build",
+        "make verify",
+        "make check",
+        "make static-check",
+        "from `/tmp`",
+        "absolute",
+        "caller-supplied `REPO_ROOT=/tmp`",
+        "python3 -m py_compile scripts/check-baseline.py",
+        "workflow YAML",
+        "both plists",
+        "storyboard XML",
+        "README SVG",
+        "asset-catalog JSON",
+        "Nine isolated hostile mutations were rejected",
+    ]:
+        if evidence not in location_make_verification:
+            failures.append(
+                f"location-independent Make verification must record {evidence}"
+            )
 
     if failures:
         for failure in failures:
