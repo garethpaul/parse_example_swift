@@ -36,6 +36,12 @@ Xcode build, simulator, Swift compiler, Parse SDK, or backend.
 Passing structural validation does not prove compatibility with current Xcode,
 current Swift, a current iOS deployment target, or any Parse SDK release.
 
+On 2026-06-19, Xcode 26.0.1 could enumerate the app and XCTest targets, but an
+unsigned simulator build failed before source compilation because the project
+has no supported `SWIFT_VERSION`. Xcode also warned that iOS 8.0 is below its
+supported simulator deployment range. This confirms that the repository is an
+inventory, not a current-Xcode buildable sample.
+
 ## Required Compatibility Decision
 
 Before implementation begins, a dedicated migration unit must record:

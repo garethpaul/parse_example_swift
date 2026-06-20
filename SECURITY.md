@@ -25,8 +25,11 @@ Helpful reports include:
 ## Project Security Posture
 
 - This repository appears to be an Apple platform application or Swift sample. The active security scope is the code and documentation on the default branch.
-- Review found network clients, sockets, web APIs, or service endpoints; changes in those areas should receive security-focused review before merge.
-- Review found file, document, data, or media parsing flows; changes in those areas should receive security-focused review before merge.
+- Review found no runtime network client, socket, web API, service endpoint, or
+  Parse integration. Adding one changes this repository from a structural
+  scaffold into implementation-bearing code and requires separate review.
+- The current parsing surface is limited to build-time validation of checked-in
+  plist, XML, JSON, Markdown, workflow, and Xcode project metadata.
 - No primary dependency manifest was detected in the repository root. If dependencies are added later, include a manifest and prefer reproducible installation instructions.
 - Current baseline has no Parse SDK integration, Parse credentials, production
   endpoint, or implemented backend login/data flow. Treat any future Parse
@@ -47,6 +50,10 @@ Helpful reports include:
 - Keep Xcode signing metadata credential-free. Do not commit a development
   team identifier, provisioning profile UUID or specifier, entitlements path,
   or account-specific signing identity.
+- Keep the exact bounded repository inventory intact. Symlinks, unexpected
+  files, files larger than 1 MiB, Parse configuration, runtime endpoints, ATS
+  exceptions, provisioning profiles, certificates, and private-key containers
+  must be rejected before merge.
 - Treat the Xcode 6-era iOS 8 project and absent dependency metadata as a
   compatibility inventory, not proof that current Xcode or a Parse SDK builds.
   Require an exact SDK resolution and simulator/XCTest evidence before making

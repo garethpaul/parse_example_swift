@@ -69,6 +69,10 @@ without a network or credential.
 The real adapter may be added only after the fake-backed contract is reviewed.
 Runtime-supplied configuration must stay outside version control and fail
 closed when absent. No master or admin key belongs in a client application.
+Any future server URL must use HTTPS with normal platform trust validation.
+Do not add cleartext endpoints, broad App Transport Security exceptions, or a
+custom trust bypass. A deliberate certificate-pinning design, if ever needed,
+requires separate lifecycle and recovery review.
 
 ## Compatibility Decision Required
 

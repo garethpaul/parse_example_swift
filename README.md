@@ -33,6 +33,7 @@ This README is based on the checked-in source, manifests, scripts, and repositor
 - `CHANGES.md` - baseline change log
 - `docs/plans/2026-06-08-parse-swift-baseline.md` - completed baseline plan
 - `scripts/check-baseline.py` - static baseline checks used by `make check`
+- `tests/test_check_baseline.py` - hostile mutation coverage for structural policy
 - `SECURITY.md` - security reporting and disclosure guidance
 - `VISION.md` - project direction and maintenance guardrails
 - `docs/intended-parse-scenario.md` - future Parse flow and safety contract
@@ -97,8 +98,10 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 - `python3 scripts/check-baseline.py`
 - Xcode's test action or `xcodebuild test` with the appropriate scheme and destination when Xcode is available
 
-The Make aliases use the checked-in static baseline so local verification still
-works on machines without Xcode.
+`make check` combines the checked-in static baseline with hostile mutation tests
+for unexpected files, symlinks, provisioning artifacts, Parse configuration,
+runtime endpoints, ATS exceptions, and size limits. The remaining Make aliases
+stay usable on machines without Xcode.
 Pinned hosted macOS structural validation runs the same `make check` contract
 on Python 3.12. It does not claim that this Swift 1-era iOS 8 project builds or
 that XCTest runs on current Xcode.
@@ -110,6 +113,10 @@ YAML settings cannot silently weaken validation.
 Credential-free signing metadata is also enforced: the Xcode project must not
 contain a development team, provisioning profile, entitlements path, or
 account-specific signing identity.
+
+The structural repository inventory is exact and bounded. Required files must
+be regular files smaller than 1 MiB, and unreviewed source, configuration,
+framework, signing, or generated artifacts fail validation.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 

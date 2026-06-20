@@ -49,6 +49,7 @@ REQUIRED = [
     SCENARIO_PLAN,
     COMPATIBILITY_PLAN,
     LOCATION_INDEPENDENT_MAKE_PLAN,
+    "docs/plans/2026-06-19-deep-review-hardening.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
     "parse_example/ViewController.swift",
@@ -59,7 +60,13 @@ REQUIRED = [
     "parse_exampleTests/Info.plist",
     "parse_exampleTests/parse_exampleTests.swift",
     "scripts/check-baseline.py",
+    "tests/test_check_baseline.py",
 ]
+EXPECTED_REPOSITORY_FILES = set(REQUIRED) | {
+    "parse_example.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+}
+IGNORED_PATH_PARTS = {".git"}
+MAX_REPOSITORY_FILE_BYTES = 1_048_576
 
 EXPECTED_WORKFLOW = """name: Check
 on:
@@ -76,7 +83,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
@@ -183,6 +190,45 @@ def target_source_paths(project):
 
 def main():
     failures = []
+    repository_files = set()
+    for path in ROOT.rglob("*"):
+        relative = path.relative_to(ROOT)
+        if any(part in IGNORED_PATH_PARTS for part in relative.parts):
+            continue
+        relative_path = relative.as_posix()
+        if path.is_symlink():
+            failures.append(
+                f"repository files must not be symlinks: {relative_path}"
+            )
+            repository_files.add(relative_path)
+            continue
+        if not path.is_file():
+            continue
+        repository_files.add(relative_path)
+        if path.stat().st_size > MAX_REPOSITORY_FILE_BYTES:
+            failures.append(
+                "repository file exceeds "
+                f"{MAX_REPOSITORY_FILE_BYTES}-byte limit: {relative_path}"
+            )
+            continue
+        try:
+            repository_text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            failures.append(f"repository files must be UTF-8 text: {relative_path}")
+            continue
+        if re.search(
+            r"-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY-----",
+            repository_text,
+        ):
+            failures.append(
+                f"repository must not contain private-key material: {relative_path}"
+            )
+
+    for path in sorted(repository_files - EXPECTED_REPOSITORY_FILES):
+        failures.append(f"unexpected repository file: {path}")
+    for path in sorted(EXPECTED_REPOSITORY_FILES - repository_files):
+        failures.append(f"expected repository file missing: {path}")
+
     for path in REQUIRED:
         if not (ROOT / path).is_file():
             failures.append(f"required file missing: {path}")
@@ -192,9 +238,11 @@ def main():
         "override REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))",
         'python3 "$(REPO_ROOT)/scripts/check-baseline.py"',
         "lint: static-check",
-        "test: static-check",
+        "test: mutation-test",
         "build: static-check",
         "verify: check",
+        "mutation-test:",
+        "python3 -m unittest discover",
     ]:
         if phrase not in makefile:
             failures.append(f"Makefile must include {phrase}")
@@ -252,7 +300,28 @@ def main():
     app_plist = plists.get("parse_example/Info.plist")
     if app_plist and app_plist.get("UIMainStoryboardFile") != "Main":
         failures.append("parse_example/Info.plist must launch the Main storyboard")
-
+    if app_plist and "NSAppTransportSecurity" in app_plist:
+        failures.append(
+            "parse_example/Info.plist must not define NSAppTransportSecurity exceptions"
+        )
+    forbidden_plist_keys = {
+        "parseapplicationid",
+        "parseclientkey",
+        "parsemasterkey",
+        "parseserverurl",
+        "serverurl",
+    }
+    for path, plist in plists.items():
+        present_forbidden_keys = sorted(
+            str(key)
+            for key in plist
+            if re.sub(r"[^a-z0-9]", "", str(key).lower()) in forbidden_plist_keys
+        )
+        if present_forbidden_keys:
+            failures.append(
+                f"{path} must not contain Parse credential or endpoint keys: "
+                + ", ".join(present_forbidden_keys)
+            )
     asset_catalogs = {}
     for path in [
         "parse_example/Images.xcassets/AppIcon.appiconset/Contents.json",
@@ -390,6 +459,24 @@ def main():
     app_delegate = read("parse_example/AppDelegate.swift")
     view_controller = read("parse_example/ViewController.swift")
     tests = read("parse_exampleTests/parse_exampleTests.swift")
+    native_source = "\n".join([app_delegate, view_controller, tests])
+    if re.search(r"(?i)\bhttps?://", native_source):
+        failures.append("native source must not contain runtime network endpoints")
+    for marker in [
+        "URLSession",
+        "URLRequest",
+        "NSURLSession",
+        "NSURLConnection",
+        "CFNetwork",
+        "NWConnection",
+        "PFObject",
+        "PFQuery",
+        "PFUser",
+    ]:
+        if marker in native_source:
+            failures.append(
+                f"structural scaffold must not contain unreviewed network or Parse runtime code: {marker}"
+            )
     if "UIApplicationDelegate" not in app_delegate:
         failures.append("AppDelegate.swift must define the app delegate")
     for phrase in [
@@ -448,7 +535,7 @@ def main():
             "legacy compatibility inventory must not gain dependency metadata without review: "
             + ", ".join(present_dependency_markers)
         )
-    if re.search(r"(?m)^\s*import\s+Parse\w*\s*$", app_delegate + view_controller):
+    if re.search(r"(?m)^\s*import\s+Parse\w*\s*$", native_source):
         failures.append("legacy Swift source must not gain an unreviewed Parse import")
 
     docs = "\n".join(read(path) for path in ["README.md", "SECURITY.md", "VISION.md"])

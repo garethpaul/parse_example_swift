@@ -1,5 +1,16 @@
 # Changes
 
+## 2026-06-19
+
+- Added executable hostile mutation coverage and an exact bounded repository
+  inventory that rejects symlinks, unexpected implementation/configuration,
+  signing artifacts, ATS exceptions, runtime endpoints, and oversized files.
+- Updated the immutable checkout pin to the official `actions/checkout` v7.0.0
+  release while retaining read-only permissions and disabled credential
+  persistence.
+- Recorded that Xcode 26.0.1 can enumerate the legacy targets but cannot build
+  the project because its absent Swift language version is unsupported.
+
 ## 2026-06-14
 
 - Made every standard Make alias resolve the structural checker from the
