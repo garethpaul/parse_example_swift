@@ -28,10 +28,12 @@ path, or reproducible dependency graph to audit.
 
 ## What Validation Proves
 
-`make check` and hosted macOS validation parse and inspect repository structure,
-project metadata, plists, storyboard XML, asset-catalog JSON, target membership,
-credential boundaries, and documentation contracts. They do not invoke an
-Xcode build, simulator, Swift compiler, Parse SDK, or backend.
+`make check` and hosted macOS validation verify the workflow-pinned integrity
+bootstrap, exact SHA-256 digests for the intended native source and Xcode
+project inputs, the closed-world repository inventory, project metadata,
+plists, storyboard XML, asset-catalog JSON, target membership, credential
+boundaries, and documentation contracts. They do not invoke an Xcode build,
+simulator, Swift compiler, Parse SDK, or backend.
 
 Passing structural validation does not prove compatibility with current Xcode,
 current Swift, a current iOS deployment target, or any Parse SDK release.

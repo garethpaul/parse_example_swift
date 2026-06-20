@@ -43,9 +43,15 @@ Helpful reports include:
 - Keep plist executable and product-name tokens explicit so app and XCTest
   target launch metadata stays reviewable when Xcode is unavailable.
 - Pinned, read-only hosted macOS structural validation checks project metadata
-  without credentials, Parse SDK access, or service-backed tests.
+  without credentials, Parse SDK access, or service-backed tests. The workflow
+  verifies the exact SHA-256 digest of the integrity bootstrap before executing
+  repository-controlled validation.
+- The integrity bootstrap pins the intended native-source and Xcode-project
+  bytes plus Make, policy-checker, and hostile-test files. Assembled endpoints,
+  alternate network or path APIs, dead code, comments, source renames/additions,
+  and isolated validation-file laundering therefore fail closed.
 - Hosted checkout uses `persist-credentials: false`, and the static baseline
-  enforces the exact workflow contract to reject extra actions or shadowed
+  enforces the normalized workflow contract to reject extra actions or shadowed
   security settings.
 - Keep Xcode signing metadata credential-free. Do not commit a development
   team identifier, provisioning profile UUID or specifier, entitlements path,

@@ -32,6 +32,7 @@ This README is based on the checked-in source, manifests, scripts, and repositor
 - `Makefile` - local static verification entry point
 - `CHANGES.md` - baseline change log
 - `docs/plans/2026-06-08-parse-swift-baseline.md` - completed baseline plan
+- `scripts/check-integrity.py` - SHA-256 trust-chain and frozen-source checks
 - `scripts/check-baseline.py` - static baseline checks used by `make check`
 - `tests/test_check_baseline.py` - hostile mutation coverage for structural policy
 - `SECURITY.md` - security reporting and disclosure guidance
@@ -95,16 +96,22 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 - `make test`
 - `make build`
 - `make verify`
+- `python3 scripts/check-integrity.py`
 - `python3 scripts/check-baseline.py`
 - Xcode's test action or `xcodebuild test` with the appropriate scheme and destination when Xcode is available
 
-`make check` combines the checked-in static baseline with hostile mutation tests
-for unexpected files, symlinks, provisioning artifacts, Parse configuration,
-runtime endpoints, ATS exceptions, and size limits. The remaining Make aliases
-stay usable on machines without Xcode.
-Pinned hosted macOS structural validation runs the same `make check` contract
-on Python 3.12. It does not claim that this Swift 1-era iOS 8 project builds or
-that XCTest runs on current Xcode.
+`make check` first verifies the workflow-pinned integrity bootstrap, then checks
+SHA-256 digests for the exact native source, Xcode project inputs, Make policy,
+baseline checker, and hostile tests before running the static baseline and
+mutation suite. This freezes the intended legacy scaffold: alternate network or
+path APIs, assembled strings, comments or dead code, source renames or additions,
+and isolated Make/checker/test laundering all fail closed. The remaining Make
+aliases stay usable on machines without Xcode.
+
+Pinned hosted macOS structural validation independently verifies the integrity
+bootstrap before running the same `make check` contract on Python 3.12. It does
+not claim that this Swift 1-era iOS 8 project builds or that XCTest runs on
+current Xcode.
 
 Hosted checkout credentials are not persisted, and the baseline enforces the
 complete workflow contract so extra actions, events, permissions, or shadowed

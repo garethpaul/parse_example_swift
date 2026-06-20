@@ -60,6 +60,7 @@ REQUIRED = [
     "parse_exampleTests/Info.plist",
     "parse_exampleTests/parse_exampleTests.swift",
     "scripts/check-baseline.py",
+    "scripts/check-integrity.py",
     "tests/test_check_baseline.py",
 ]
 EXPECTED_REPOSITORY_FILES = set(REQUIRED) | {
@@ -68,13 +69,15 @@ EXPECTED_REPOSITORY_FILES = set(REQUIRED) | {
 IGNORED_PATH_PARTS = {".git"}
 MAX_REPOSITORY_FILE_BYTES = 1_048_576
 
-EXPECTED_WORKFLOW = """name: Check
+EXPECTED_WORKFLOW_TEMPLATE = """name: Check
 on:
   pull_request:
   push:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  INTEGRITY_SHA256: __INTEGRITY_SHA256__
 concurrency:
   group: check-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -89,6 +92,11 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
         with:
           python-version: "3.12"
+      - name: Verify integrity bootstrap
+        run: |
+          actual="$(python3 -c 'import hashlib; print(hashlib.sha256(open("scripts/check-integrity.py", "rb").read()).hexdigest())')"
+          test "$actual" = "$INTEGRITY_SHA256" || { echo "integrity bootstrap digest mismatch" >&2; exit 1; }
+          python3 scripts/check-integrity.py
       - run: make check
 """
 
@@ -248,10 +256,15 @@ def main():
             failures.append(f"Makefile must include {phrase}")
 
     workflow = read(".github/workflows/check.yml")
-    if workflow != EXPECTED_WORKFLOW:
+    normalized_workflow, digest_count = re.subn(
+        r"(?m)^(  INTEGRITY_SHA256: )[0-9a-f]{64}$",
+        r"\1__INTEGRITY_SHA256__",
+        workflow,
+    )
+    if digest_count != 1 or normalized_workflow != EXPECTED_WORKFLOW_TEMPLATE:
         failures.append(
             "Check workflow must exactly preserve the pinned, credential-free "
-            "macOS structural validation contract"
+            "macOS integrity and structural validation contract"
         )
 
     agents = read("AGENTS.md")
