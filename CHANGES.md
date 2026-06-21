@@ -2,10 +2,12 @@
 
 ## 2026-06-21
 
-- Made absolute Makefile verification safe for spaces and apostrophes,
+- Made absolute Makefile verification safe for spaces, apostrophes, quotes,
+  backticks, and shell metacharacters,
   ignored caller-provided `REPO_ROOT` values, and rejected command-line or
   environment `MAKEFILE_LIST` injection before the integrity trust chain runs.
-- Added root-policy regressions and refreshed protected-file/bootstrap hashes.
+- Added live command-substitution regressions and refreshed protected-file and
+  bootstrap hashes.
 
 ## 2026-06-19
 

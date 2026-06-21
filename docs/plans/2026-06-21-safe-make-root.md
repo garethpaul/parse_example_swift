@@ -9,7 +9,8 @@ the frozen legacy checkout.
 
 - Resolve the Makefile directory with POSIX-safe absolute path handling.
 - Reject non-file `MAKEFILE_LIST` origins and ignore caller `REPO_ROOT` values.
-- Add dependency-free regression coverage for every public Make target.
+- Shell-quote the resolved root once before any recipe uses it.
+- Add dependency-free dry-run and live command-substitution regressions.
 
 ## Validation
 
