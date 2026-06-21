@@ -1,5 +1,12 @@
 # Changes
 
+## 2026-06-21
+
+- Made absolute Makefile verification safe for spaces and apostrophes,
+  ignored caller-provided `REPO_ROOT` values, and rejected command-line or
+  environment `MAKEFILE_LIST` injection before the integrity trust chain runs.
+- Added root-policy regressions and refreshed protected-file/bootstrap hashes.
+
 ## 2026-06-19
 
 - Pinned the intended native source and Xcode project inputs with SHA-256

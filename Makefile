@@ -1,8 +1,11 @@
-.PHONY: build check integrity-check lint mutation-test static-check test verify
+ifneq ($(origin MAKEFILE_LIST),file)
+$(error MAKEFILE_LIST must not be overridden)
+endif
+override REPO_ROOT := $(shell path='$(subst ','"'"',$(MAKEFILE_LIST))'; path=$$(printf '%s' "$$path" | /usr/bin/sed 's/^ //'); directory=$$(/usr/bin/dirname -- "$$path"); CDPATH= cd -- "$$directory" && /bin/pwd -P)
 
-override REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+.PHONY: build check integrity-check lint mutation-test root-test static-check test verify
 
-check: static-check mutation-test
+check: static-check mutation-test root-test
 
 verify: check
 
@@ -26,3 +29,6 @@ static-check: integrity-check
 
 mutation-test:
 	cd "$(REPO_ROOT)" && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py' -v
+
+root-test:
+	PYTHONDONTWRITEBYTECODE=1 python3 "$(REPO_ROOT)/scripts/test-makefile-root.py"

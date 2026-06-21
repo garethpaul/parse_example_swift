@@ -20,6 +20,7 @@ SIGNING_METADATA_PLAN = "docs/plans/2026-06-13-credential-free-signing-metadata.
 SCENARIO_PLAN = "docs/plans/2026-06-13-intended-parse-scenario.md"
 COMPATIBILITY_PLAN = "docs/plans/2026-06-13-legacy-toolchain-compatibility-inventory.md"
 LOCATION_INDEPENDENT_MAKE_PLAN = "docs/plans/2026-06-14-location-independent-make-gates.md"
+SAFE_MAKE_ROOT_PLAN = "docs/plans/2026-06-21-safe-make-root.md"
 REQUIRED = [
     ".github/workflows/check.yml",
     "AGENTS.md",
@@ -50,6 +51,7 @@ REQUIRED = [
     SCENARIO_PLAN,
     COMPATIBILITY_PLAN,
     LOCATION_INDEPENDENT_MAKE_PLAN,
+    SAFE_MAKE_ROOT_PLAN,
     "docs/plans/2026-06-19-deep-review-hardening.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
@@ -62,6 +64,7 @@ REQUIRED = [
     "parse_exampleTests/parse_exampleTests.swift",
     "scripts/check-baseline.py",
     "scripts/check-integrity.py",
+    "scripts/test-makefile-root.py",
     "tests/test_check_baseline.py",
 ]
 EXPECTED_REPOSITORY_FILES = set(REQUIRED) | {
@@ -280,8 +283,13 @@ def main():
 
     makefile = read("Makefile")
     for phrase in [
-        "override REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))",
+        "ifneq ($(origin MAKEFILE_LIST),file)",
+        "$(error MAKEFILE_LIST must not be overridden)",
+        "override REPO_ROOT := $(shell path=",
+        'CDPATH= cd -- "$$directory" && /bin/pwd -P)',
         'python3 "$(REPO_ROOT)/scripts/check-baseline.py"',
+        'PYTHONDONTWRITEBYTECODE=1 python3 "$(REPO_ROOT)/scripts/test-makefile-root.py"',
+        "check: static-check mutation-test root-test",
         "lint: static-check",
         "test: mutation-test",
         "build: static-check",

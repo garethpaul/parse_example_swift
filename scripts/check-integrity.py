@@ -15,7 +15,7 @@ NATIVE_SOURCE_PATHS = {
     "parse_exampleTests/parse_exampleTests.swift",
 }
 PROTECTED_FILE_SHA256 = {
-    "Makefile": "f0e34fe147c9876f9b367cb8843ea5b9a7d9c4324dfee517890f09118022f7d9",
+    "Makefile": "98e8668dd11399b89bf4f96fe4d8dfa0e72c8e2d650a4d7006cbf36997d21144",
     "Swift.h": "7737e349ab30c8ea78cd760b12bb1e43af61b2cfcd4e51580ac7cbaf998ab068",
     "parse_example.xcodeproj/project.pbxproj": "138a0fa6ef66983c94ab7f1e3478c6b38a644db7eaaea7c0035830f963e6c527",
     "parse_example.xcodeproj/project.xcworkspace/contents.xcworkspacedata": "4dcd57608e0289e1e510ed6da77eb11278f65482b1bba03e8ed2ba6c5d0f9721",
@@ -27,7 +27,7 @@ PROTECTED_FILE_SHA256 = {
     "parse_example/Info.plist": "a83724f00327b342bac26641e2a91647a7b897c714d90e8eddf9bd45e82339eb",
     "parse_exampleTests/Info.plist": "ec09c3ddaec1a2711168f725d53813cc59e40a6b9ff59fd855beb832d2e5e5db",
     "parse_exampleTests/parse_exampleTests.swift": "c35adf82b4e1ff833d876354d4f7d1d107fc022456b15283f38d6d2670532741",
-    "scripts/check-baseline.py": "f9a0472d79a18c8b479f1f958d859fb0744988f3c59f95f3c0f26ce32d18fb30",
+    "scripts/check-baseline.py": "64c0c51b34ec065b37a5392e9bc7f9cdef852706d3d797e6150a60f07896e61e",
     "tests/test_check_baseline.py": "472601b178e85e9980b63fb5b03724fb4928f15ec895092f159b869b4e656c00",
 }
 WORKFLOW_TEMPLATE = """name: Check
