@@ -20,6 +20,7 @@ SIGNING_METADATA_PLAN = "docs/plans/2026-06-13-credential-free-signing-metadata.
 SCENARIO_PLAN = "docs/plans/2026-06-13-intended-parse-scenario.md"
 COMPATIBILITY_PLAN = "docs/plans/2026-06-13-legacy-toolchain-compatibility-inventory.md"
 LOCATION_INDEPENDENT_MAKE_PLAN = "docs/plans/2026-06-14-location-independent-make-gates.md"
+SAFE_MAKE_ROOT_PLAN = "docs/plans/2026-06-21-safe-make-root.md"
 REQUIRED = [
     ".github/workflows/check.yml",
     "AGENTS.md",
@@ -50,6 +51,7 @@ REQUIRED = [
     SCENARIO_PLAN,
     COMPATIBILITY_PLAN,
     LOCATION_INDEPENDENT_MAKE_PLAN,
+    SAFE_MAKE_ROOT_PLAN,
     "docs/plans/2026-06-19-deep-review-hardening.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
@@ -62,6 +64,7 @@ REQUIRED = [
     "parse_exampleTests/parse_exampleTests.swift",
     "scripts/check-baseline.py",
     "scripts/check-integrity.py",
+    "scripts/test-makefile-root.py",
     "tests/test_check_baseline.py",
 ]
 EXPECTED_REPOSITORY_FILES = set(REQUIRED) | {
@@ -280,8 +283,14 @@ def main():
 
     makefile = read("Makefile")
     for phrase in [
-        "override REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))",
-        'python3 "$(REPO_ROOT)/scripts/check-baseline.py"',
+        "ifneq ($(origin MAKEFILE_LIST),file)",
+        "$(error MAKEFILE_LIST must not be overridden)",
+        "override REPO_ROOT := $(shell path=",
+        "override SHELL_REPO_ROOT :=",
+        'CDPATH= cd -- "$$directory" && /bin/pwd -P)',
+        "python3 $(SHELL_REPO_ROOT)/scripts/check-baseline.py",
+        "PYTHONDONTWRITEBYTECODE=1 python3 $(SHELL_REPO_ROOT)/scripts/test-makefile-root.py",
+        "check: static-check mutation-test root-test",
         "lint: static-check",
         "test: mutation-test",
         "build: static-check",
@@ -291,6 +300,19 @@ def main():
     ]:
         if phrase not in makefile:
             failures.append(f"Makefile must include {phrase}")
+
+    root_test = read("scripts/test-makefile-root.py")
+    for phrase in [
+        "import shlex",
+        "return result, shlex.quote(str(checkout.resolve()))",
+        "test_live_root_path_does_not_execute_shell_metacharacters",
+        "`touch BACKTICK_PWNED`",
+        '" ; touch QUOTE_PWNED ; echo "',
+        "self.assertFalse((checkout.parent / marker_name).exists(), result.stdout)",
+        'self.assertIn("live root stub passed", result.stdout)',
+    ]:
+        if phrase not in root_test:
+            failures.append(f"Make root regression must include {phrase}")
 
     workflow = read(".github/workflows/check.yml")
     normalized_workflow, digest_count = re.subn(
