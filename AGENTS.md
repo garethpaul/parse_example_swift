@@ -53,6 +53,8 @@
 - Keep non-placeholder XCTest coverage in place before adding Parse SDK calls or service-backed flows.
 - Keep the non-empty bundle identifier assertion in place for scaffold changes.
 - Keep plist bundle identifiers and plist package types intact when editing app or test target metadata.
+- Keep Make verification authoritative: reject extra `-f` files, preloaded
+  Makefiles, caller `MAKEFLAGS`, and non-executing or error-ignoring modes.
 
 ## Agent workflow
 

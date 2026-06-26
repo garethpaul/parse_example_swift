@@ -1,5 +1,59 @@
 # Changes
 
+## 2026-06-26 13:51:31 PDT - P1 - Make repository verification authoritative
+
+### Summary
+
+Closed a Make invocation bypass that allowed a later caller-controlled
+Makefile to replace every verification recipe and return success without
+running integrity, structural, mutation, or root tests.
+
+### Work completed
+
+- Converted public targets to guarded double-colon rules with a repository
+  authority prerequisite.
+- Rejected later single-colon replacement, later double-colon append,
+  preloaded Makefiles, caller `MAKEFLAGS`, and ten non-executing or
+  error-ignoring modes.
+- Replaced dry-run-only root assertions with live minimal-fixture executions.
+- Extended frozen static contracts and hostile regressions.
+
+### Threads
+
+- None; the focused Make authority work was completed directly.
+
+### Files changed
+
+- `Makefile` — enforce one authoritative executable verification graph.
+- `scripts/test-makefile-root.py` — cover replacement, append, mode, override,
+  and live path behavior.
+- `scripts/check-baseline.py`, `scripts/check-integrity.py`, and
+  `.github/workflows/check.yml` — freeze the reviewed authority boundary.
+- `README.md`, `SECURITY.md`, `VISION.md`, `AGENTS.md`, and
+  `docs/plans/2026-06-26-make-invocation-authority.md` — document behavior and
+  evidence.
+
+### Validation
+
+- Full structural, mutation, Make authority, external-directory, integrity,
+  and diff checks — recorded in the completed plan.
+
+### Bugs / findings
+
+- P1 fixed: a later `-f` file could replace all leaf recipes, preserve the
+  aggregate dependency graph, and return exit 0 without running any check.
+- P1 fixed: `-n`, `-t`, `-q`, and `-i` families could report success while
+  suppressing execution or errors.
+
+### Blockers
+
+- Current-Xcode and Parse SDK compatibility remain intentionally unclaimed.
+
+### Next action
+
+- Make the separate compatibility decision before adding any Parse SDK or
+  private-note implementation.
+
 ## 2026-06-21
 
 - Made absolute Makefile verification safe for spaces, apostrophes, quotes,

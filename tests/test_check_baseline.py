@@ -315,6 +315,46 @@ func unreachableFileRead() {
             "integrity mismatch: Makefile",
         )
 
+    def test_make_gate_rejects_later_single_colon_recipe_replacement(self):
+        self.assert_later_makefile_rejected(":")
+
+    def test_make_gate_rejects_later_double_colon_recipe_append(self):
+        self.assert_later_makefile_rejected("::")
+
+    def assert_later_makefile_rejected(self, separator):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository = self.copy_repository(temporary_directory)
+            later_makefile = Path(temporary_directory) / "later.mk"
+            marker = Path(temporary_directory) / "later-recipe-ran"
+            later_makefile.write_text(
+                (
+                    "build check integrity-check lint mutation-test root-test "
+                    f"static-check test verify{separator}\n"
+                    f"\t@touch '{marker}'\n"
+                ),
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [
+                    "make",
+                    "--no-print-directory",
+                    "-f",
+                    str(repository / "Makefile"),
+                    "-f",
+                    str(later_makefile),
+                    "check",
+                ],
+                cwd=repository.parent,
+                capture_output=True,
+                text=True,
+                timeout=20,
+                check=False,
+            )
+            marker_exists = marker.exists()
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertFalse(marker_exists, result.stdout)
+
     def test_integrity_checker_rejects_native_source_addition(self):
         def mutate(repository, _):
             (repository / "parse_example" / "NetworkClient.swift").write_text(

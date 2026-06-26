@@ -48,6 +48,8 @@ Priority:
 - Keep asset catalog metadata aligned with app icon and launch image settings
 - Keep `make lint`, `make test`, `make build`, `make verify`, and `make check`
   available as no-Xcode local verification gates
+- Keep the Make entry point isolated from later recipe replacement and
+  false-green non-executing modes
 - Keep the intended Parse scenario limited to authenticated owner-scoped
   private notes behind a deterministic fake-first application boundary
 - Keep the Xcode 6-era iOS 8 compatibility inventory explicit until a selected

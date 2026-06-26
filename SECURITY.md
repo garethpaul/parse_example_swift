@@ -82,6 +82,9 @@ Helpful reports include:
 - Run `make lint`, `make test`, `make build`, `make verify`, and `make check`
   before changing project metadata, storyboard wiring, or Parse integration
   assumptions.
+- Invoke repository verification with this Makefile alone. Additional `-f`
+  files, preloaded Makefiles, caller `MAKEFLAGS`, and non-executing or
+  error-ignoring modes fail closed before policy commands run.
 
 ## Mobile Privacy Notes
 

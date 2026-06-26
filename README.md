@@ -171,6 +171,9 @@ When the required SDK or runtime is unavailable, use static checks and source re
   including paths with whitespace, quotes, apostrophes, or backticks. The
   resolved root is shell-quoted before recipe use, caller `REPO_ROOT` values
   are ignored, and `MAKEFILE_LIST` overrides fail closed before integrity checks.
+  Extra explicit or preloaded Makefiles cannot replace or append public target
+  recipes, and dry-run, touch, question, or ignore-error modes are rejected
+  instead of returning a false-green verification result.
 - This looks like an Apple platform project or sample. Xcode, Swift, CocoaPods, and deployment target versions may need to match the original project era.
 - Keep non-placeholder XCTest coverage in place before adding Parse SDK calls or
   service-backed flows.
