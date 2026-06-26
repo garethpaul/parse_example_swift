@@ -21,6 +21,7 @@ SCENARIO_PLAN = "docs/plans/2026-06-13-intended-parse-scenario.md"
 COMPATIBILITY_PLAN = "docs/plans/2026-06-13-legacy-toolchain-compatibility-inventory.md"
 LOCATION_INDEPENDENT_MAKE_PLAN = "docs/plans/2026-06-14-location-independent-make-gates.md"
 SAFE_MAKE_ROOT_PLAN = "docs/plans/2026-06-21-safe-make-root.md"
+MAKE_AUTHORITY_PLAN = "docs/plans/2026-06-26-make-invocation-authority.md"
 REQUIRED = [
     ".github/workflows/check.yml",
     "AGENTS.md",
@@ -52,6 +53,7 @@ REQUIRED = [
     COMPATIBILITY_PLAN,
     LOCATION_INDEPENDENT_MAKE_PLAN,
     SAFE_MAKE_ROOT_PLAN,
+    MAKE_AUTHORITY_PLAN,
     "docs/plans/2026-06-19-deep-review-hardening.md",
     "parse_example.xcodeproj/project.pbxproj",
     "parse_example/AppDelegate.swift",
@@ -283,19 +285,29 @@ def main():
 
     makefile = read("Makefile")
     for phrase in [
+        ".DEFAULT_GOAL := check",
+        ".SECONDEXPANSION:",
+        ".PHONY: __repository-make-authority",
+        "MAKEFLAGS must not be overridden for repository verification",
+        "non-executing or error-ignoring MAKEFLAGS are not supported",
+        "MAKEFILES must be empty; repository verification requires this Makefile to be loaded alone",
         "ifneq ($(origin MAKEFILE_LIST),file)",
         "$(error MAKEFILE_LIST must not be overridden)",
+        "override REPOSITORY_MAKEFILE := $(value MAKEFILE_LIST)",
+        "override EXPECTED_MAKEFILE_LIST := $(value MAKEFILE_LIST)",
+        "override CURRENT_MAKEFILE_LIST = $(value MAKEFILE_LIST)",
+        "multiple -f Makefiles are not supported",
         "override REPO_ROOT := $(shell path=",
         "override SHELL_REPO_ROOT :=",
         'CDPATH= cd -- "$$directory" && /bin/pwd -P)',
         "python3 $(SHELL_REPO_ROOT)/scripts/check-baseline.py",
         "PYTHONDONTWRITEBYTECODE=1 python3 $(SHELL_REPO_ROOT)/scripts/test-makefile-root.py",
-        "check: static-check mutation-test root-test",
-        "lint: static-check",
-        "test: mutation-test",
-        "build: static-check",
-        "verify: check",
-        "mutation-test:",
+        "check:: static-check mutation-test root-test",
+        "lint:: static-check",
+        "test:: mutation-test",
+        "build:: static-check",
+        "verify:: check",
+        "mutation-test::",
         "python3 -m unittest discover",
     ]:
         if phrase not in makefile:
@@ -310,6 +322,10 @@ def main():
         '" ; touch QUOTE_PWNED ; echo "',
         "self.assertFalse((checkout.parent / marker_name).exists(), result.stdout)",
         'self.assertIn("live root stub passed", result.stdout)',
+        "test_command_line_makeflags_override_fails_closed",
+        "test_later_makefile_cannot_replace_or_append_public_recipes",
+        "test_non_executing_and_error_ignoring_modes_fail_closed",
+        "self.assertFalse(marker.exists(), result.stdout)",
     ]:
         if phrase not in root_test:
             failures.append(f"Make root regression must include {phrase}")
@@ -663,6 +679,33 @@ def main():
         failures.append(
             "CHANGES.md must record external absolute-Makefile calls"
         )
+
+    make_authority_plan = read(MAKE_AUTHORITY_PLAN)
+    make_authority_status = re.findall(
+        r"(?mi)^status:\s*(.+?)\s*$", make_authority_plan
+    )
+    make_authority_verification = markdown_section(
+        make_authority_plan, "Verification Completed"
+    )
+    for evidence in [
+        "seven Make root tests",
+        "27 baseline mutations",
+        "make check",
+        "external working directory",
+        "single-colon replacement",
+        "double-colon append",
+        "ten non-executing and error-ignoring modes",
+        "git diff --check",
+    ]:
+        if evidence not in make_authority_verification:
+            failures.append(
+                f"Make authority verification must record {evidence}"
+            )
+    if make_authority_status != ["completed"] or re.search(
+        r"(?i)\b(?:pending|todo|tbd|not run|to complete)\b",
+        make_authority_verification,
+    ):
+        failures.append("Make authority plan must record completed verification")
 
     plan = read(PLAN)
     if "status: completed" not in plan or "make check" not in plan:
